@@ -36,6 +36,13 @@
           {"type": "command", "command": ".claude/hooks/session-start.sh"}
         ]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {"type": "command", "command": ".claude/hooks/clarify-vague-request.sh"}
+        ]
+      }
     ]
   }
 }
