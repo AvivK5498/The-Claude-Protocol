@@ -1,7 +1,7 @@
 """Tests for MCP server."""
 
 import pytest
-from mcp_codex_delegator import server
+from mcp_provider_delegator import server
 
 @pytest.mark.asyncio
 async def test_list_tools():
@@ -13,7 +13,7 @@ async def test_list_tools():
 
 @pytest.mark.asyncio
 async def test_invoke_agent_error_handling():
-    """Test invoke_agent handles errors gracefully (Codex CLI not available in test env)."""
+    """Test invoke_agent handles errors gracefully (providers not available in test env)."""
     result = await server.call_tool(
         "invoke_agent",
         {
@@ -22,7 +22,7 @@ async def test_invoke_agent_error_handling():
         }
     )
     assert len(result) == 1
-    # In test environment without Codex CLI, should get error response
+    # In test environment without providers, should get error response
     assert result[0].text
-    # Either succeeds (if Codex is configured) or returns error
+    # Either succeeds (if providers configured) or returns error
     assert isinstance(result[0].text, str)

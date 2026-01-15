@@ -10,7 +10,7 @@
 
 ## Delegation
 
-**Read-only (Codex):** `mcp__codex_delegator__invoke_agent(agent="scout|detective|architect|scribe", task_prompt="...")`
+**Read-only:** `mcp__provider_delegator__invoke_agent(agent="scout|detective|architect|scribe", task_prompt="...")`
 
 **Implementing (Task):** `Task(subagent_type="<name>-supervisor", prompt="BEAD_ID: {id}\n\n{description}")`
 

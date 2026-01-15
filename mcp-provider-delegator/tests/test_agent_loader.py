@@ -3,7 +3,7 @@
 import os
 import pytest
 from pathlib import Path
-from mcp_codex_delegator.agent_loader import AgentLoader, AgentTemplate
+from mcp_provider_delegator.agent_loader import AgentLoader, AgentTemplate
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 

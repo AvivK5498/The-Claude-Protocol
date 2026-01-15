@@ -7,7 +7,8 @@ A lightweight multi-agent orchestration framework for Claude Code that enables p
 Before getting started, ensure you have:
 
 - **Claude Code** with hooks support
-- **Codex CLI** - Run `codex login` to authenticate
+- **Codex CLI** - Run `codex login` to authenticate (primary provider)
+- **Gemini CLI** - Optional fallback when Codex hits rate limits
 - **uv** - Python package manager ([install](https://github.com/astral-sh/uv))
 - **beads CLI** - Installed automatically by the skill, or manually:
   - macOS: `brew install steveyegge/beads/bd`
@@ -72,7 +73,7 @@ Beads Orchestration turns a single Claude Code session into a coordinated team o
            │               │               │
            ▼               ▼               ▼
     ┌──────────┐    ┌──────────┐    ┌──────────┐
-    │  Codex   │    │   Task   │    │   Task   │
+    │ Provider │    │   Task   │    │   Task   │
     │ Delegator│    │ Subagent │    │ Subagent │
     └────┬─────┘    └────┬─────┘    └────┬─────┘
          │               │               │
@@ -91,7 +92,7 @@ Beads Orchestration turns a single Claude Code session into a coordinated team o
 ```
 your-project/
 ├── .beads/                           # Git-native task tracking
-├── .mcp.json                         # Codex delegator MCP config
+├── .mcp.json                         # Provider delegator MCP config
 ├── .claude/
 │   ├── agents/
 │   │   ├── scout.md                  # Codebase exploration (Codex)
@@ -142,9 +143,9 @@ bd close BD-001                      # Close completed bead
 
 The orchestration workflow **enforces** delegation through hooks and subagent configuration. The orchestrator cannot bypass these patterns—they are automatically applied whether using Codex agents or native Claude Code Task subagents.
 
-**Read-only tasks → Codex Delegator (enforced):**
+**Read-only tasks → Provider Delegator (enforced):**
 ```python
-mcp__codex_delegator__invoke_agent(
+mcp__provider_delegator__invoke_agent(
     agent="scout",
     task_prompt="Find all authentication-related files"
 )
@@ -257,28 +258,30 @@ The code-reviewer agent performs two-phase review:
 | `validate-completion.sh` | SubagentStop | Blocks completion without code review |
 | `session-start.sh` | SessionStart | Session initialization |
 
-## MCP Codex Delegator
+## MCP Provider Delegator
 
-The `codex_delegator` MCP server enables running read-only agents on Codex:
+The `provider_delegator` MCP server runs read-only agents with automatic fallback:
 
 ```
 ┌─────────────────────────────────────────┐
 │           Claude Code Session           │
 │                                         │
-│  mcp__codex_delegator__invoke_agent()   │
+│  mcp__provider_delegator__invoke_agent()│
 │               │                         │
 └───────────────┼─────────────────────────┘
                 │
                 ▼
 ┌─────────────────────────────────────────┐
-│        MCP Codex Delegator Server       │
+│       MCP Provider Delegator Server     │
 │                                         │
 │  1. Load agent template (.md file)      │
-│  2. Map model (haiku→mini, sonnet→std)  │
-│  3. Invoke Codex CLI with agent prompt  │
-│  4. Return response                     │
+│  2. Try Codex (primary)                 │
+│  3. If rate limited → Try Gemini        │
+│  4. If both fail → Skip (code-reviewer) │
 └─────────────────────────────────────────┘
 ```
+
+**Fallback Chain:** Codex → Gemini → Skip (code-reviewer only)
 
 **Supported Agents:** scout, detective, architect, scribe, code-reviewer
 

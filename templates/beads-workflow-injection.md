@@ -19,7 +19,7 @@
 3. **REQUEST CODE REVIEW** (mandatory before completion):
    Use the MCP tool directly (NOT via Bash - this is a Claude tool, not a shell command):
    ```
-   Tool: mcp__codex_delegator__invoke_agent
+   Tool: mcp__provider_delegator__invoke_agent
    Parameters:
      agent: "code-reviewer"
      task_prompt: "Review BEAD_ID: {BEAD_ID}\nBranch: bd-{BEAD_ID}"
@@ -34,7 +34,7 @@
 You MUST get code review approval before completing:
 - ALWAYS use agent="code-reviewer" - NO OTHER AGENT (not detective, not scout, not architect)
 - Code review is required even if you made no code changes (reviewer verifies the task is complete)
-- Call code-reviewer using the mcp__codex_delegator__invoke_agent TOOL (not Bash!)
+- Call code-reviewer using the mcp__provider_delegator__invoke_agent TOOL (not Bash!)
 - If not approved, fix ALL issues raised
 - Loop until "CODE REVIEW: APPROVED"
 - The code-reviewer adds the APPROVED comment (not you)

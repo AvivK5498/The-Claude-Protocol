@@ -1,7 +1,7 @@
 """Integration tests for full agent delegation flow."""
 
 import pytest
-from mcp_codex_delegator.server import app
+from mcp_provider_delegator.server import app
 
 @pytest.mark.integration
 @pytest.mark.asyncio

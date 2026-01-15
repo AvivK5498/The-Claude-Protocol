@@ -16,7 +16,7 @@ READ_ONLY_AGENTS="scout|detective|architect|scribe"
 
 if [[ "$SUBAGENT_TYPE" =~ ^($READ_ONLY_AGENTS)$ ]]; then
   cat << EOF
-{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Agent '$SUBAGENT_TYPE' is read-only - must use Codex: mcp__codex_delegator__invoke_agent(agent=\"$SUBAGENT_TYPE\", task_prompt=\"...\")"}}
+{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Agent '$SUBAGENT_TYPE' is read-only - must use provider delegator: mcp__provider_delegator__invoke_agent(agent=\"$SUBAGENT_TYPE\", task_prompt=\"...\")"}}
 EOF
   exit 0
 fi

@@ -115,7 +115,7 @@ If external directory doesn't have a matching specialist:
 ### Injection Format
 
 **CRITICAL: Do NOT include a `tools:` section in the frontmatter.**
-Omitting the tools section allows the supervisor to inherit ALL available tools from the parent session, including MCP tools like `mcp__codex_delegator__invoke_agent`.
+Omitting the tools section allows the supervisor to inherit ALL available tools from the parent session, including MCP tools like `mcp__provider_delegator__invoke_agent`.
 
 ```markdown
 ---

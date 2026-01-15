@@ -61,7 +61,7 @@ The bootstrap script will:
 3. Copy agent templates to `.claude/agents/`
 4. Copy hooks to `.claude/hooks/`
 5. Configure `.claude/settings.json`
-6. Set up `.mcp.json` for codex_delegator
+6. Set up `.mcp.json` for provider_delegator
 7. Create `CLAUDE.md` with orchestrator instructions
 8. Update `.gitignore`
 
@@ -138,15 +138,16 @@ rm -rf "${TMPDIR:-/tmp}/beads-orchestration-setup"
 ## What This Creates
 
 - **Beads CLI** for git-native task tracking (one bead = one branch = one task)
-- **Core agents**: scout, detective, architect, scribe, code-reviewer (run on Codex)
+- **Core agents**: scout, detective, architect, scribe, code-reviewer (run via provider delegator)
 - **Discovery agent**: Auto-detects tech stack and creates specialized supervisors
-- **MCP Codex Delegator**: Enables read-only agent delegation
+- **MCP Provider Delegator**: Enables read-only agent delegation with Codex→Gemini fallback
 - **7 hooks**: Enforce orchestrator discipline, code review gates, concise responses
 - **Branch-per-task workflow**: Parallel development with automated merge conflict handling
 
 ## Requirements
 
-- **Codex CLI**: `codex login` for authentication
+- **Codex CLI**: `codex login` for authentication (primary provider)
+- **Gemini CLI**: Optional fallback when Codex hits rate limits
 - **uv**: Python package manager for MCP server
 - **beads CLI**: Installed automatically (or manually via brew/npm/go)
 

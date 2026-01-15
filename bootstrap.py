@@ -7,7 +7,7 @@ Creates:
 - .claude/agents/ with agent templates (copied, not generated)
 - .claude/hooks/ with hook scripts
 - .claude/settings.json with hook configuration
-- .mcp.json with codex-delegator configuration
+- .mcp.json with provider-delegator configuration
 
 Usage:
     python bootstrap.py [--project-name NAME] [--project-dir DIR]
@@ -126,19 +126,19 @@ def copy_and_replace(source: Path, dest: Path, replacements: dict) -> None:
 # CODEX DELEGATOR SETUP (SHARED LOCATION)
 # ============================================================================
 
-# Shared location for codex-delegator (installed once, used by all projects)
-SHARED_MCP_DIR = Path.home() / ".claude" / "mcp-servers" / "codex-delegator"
+# Shared location for provider-delegator (installed once, used by all projects)
+SHARED_MCP_DIR = Path.home() / ".claude" / "mcp-servers" / "provider-delegator"
 
 
-def setup_codex_delegator() -> Path:
-    """Set up codex-delegator in shared location (~/.claude/mcp-servers/codex-delegator/).
+def setup_provider_delegator() -> Path:
+    """Set up provider-delegator in shared location (~/.claude/mcp-servers/provider-delegator/).
 
     This installs once and is reused by all projects.
     Returns path to venv python.
     """
-    print("\n[0/6] Setting up codex-delegator (shared)...")
+    print("\n[0/6] Setting up provider-delegator (shared)...")
 
-    source_dir = SCRIPT_DIR / "mcp-codex-delegator"
+    source_dir = SCRIPT_DIR / "mcp-provider-delegator"
     venv_dir = SHARED_MCP_DIR / ".venv"
     venv_python = venv_dir / "bin" / "python"
 
@@ -149,7 +149,7 @@ def setup_codex_delegator() -> Path:
 
     # Verify source exists
     if not source_dir.exists():
-        print(f"  ERROR: mcp-codex-delegator not found at {source_dir}")
+        print(f"  ERROR: mcp-provider-delegator not found at {source_dir}")
         print("  Make sure you cloned the full lean-orchestration repo")
         return None
 
@@ -200,7 +200,7 @@ def setup_codex_delegator() -> Path:
         print(f"  ERROR: Failed to install dependencies: {result.stderr}")
         return None
 
-    print(f"  DONE: codex-delegator installed at {SHARED_MCP_DIR}")
+    print(f"  DONE: provider-delegator installed at {SHARED_MCP_DIR}")
     return venv_python
 
 
@@ -497,7 +497,7 @@ def setup_gitignore(project_dir: Path) -> None:
 # ============================================================================
 
 def create_mcp_config(project_dir: Path, venv_python: Path) -> None:
-    """Add codex-delegator to .mcp.json, preserving existing servers."""
+    """Add provider-delegator to .mcp.json, preserving existing servers."""
     print("\n[7/7] Configuring MCP...")
 
     mcp_dest = project_dir / ".mcp.json"
@@ -517,11 +517,11 @@ def create_mcp_config(project_dir: Path, venv_python: Path) -> None:
     if "mcpServers" not in existing:
         existing["mcpServers"] = {}
 
-    # Add/update codex_delegator
-    existing["mcpServers"]["codex_delegator"] = {
+    # Add/update provider_delegator
+    existing["mcpServers"]["provider_delegator"] = {
         "type": "stdio",
         "command": str(venv_python),
-        "args": ["-m", "mcp_codex_delegator.server"],
+        "args": ["-m", "mcp_provider_delegator.server"],
         "env": {
             "AGENT_TEMPLATES_PATH": ".claude/agents"
         }
@@ -530,7 +530,7 @@ def create_mcp_config(project_dir: Path, venv_python: Path) -> None:
     mcp_dest.write_text(json.dumps(existing, indent=2))
 
     server_count = len(existing["mcpServers"])
-    print(f"  - Added codex-delegator to .mcp.json ({server_count} total servers)")
+    print(f"  - Added provider-delegator to .mcp.json ({server_count} total servers)")
     print(f"    Command: {venv_python}")
     print(f"    Agents: .claude/agents (relative)")
     print("  DONE: MCP config updated")
@@ -611,10 +611,10 @@ def main():
         print("Make sure you cloned the full lean-orchestration repo")
         sys.exit(1)
 
-    # Step 0: Setup bundled codex-delegator
-    venv_python = setup_codex_delegator()
+    # Step 0: Setup bundled provider-delegator
+    venv_python = setup_provider_delegator()
     if not venv_python:
-        print("\nERROR: Failed to setup codex-delegator. Aborting.")
+        print("\nERROR: Failed to setup provider-delegator. Aborting.")
         sys.exit(1)
 
     # Run remaining steps

@@ -1,4 +1,4 @@
-"""MCP server for delegating agents to Codex."""
+"""MCP server for delegating agents to AI providers with fallback support."""
 
 import asyncio
 import logging
@@ -10,7 +10,7 @@ from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
 
 from .agent_loader import AgentLoader
-from .codex_client import CodexClient
+from .provider_client import create_provider_chain
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -20,10 +20,9 @@ logger = logging.getLogger(__name__)
 AGENT_TEMPLATES_PATH = os.getenv("AGENT_TEMPLATES_PATH", ".claude/agents")
 
 agent_loader = AgentLoader(templates_path=AGENT_TEMPLATES_PATH)
-codex_client = CodexClient()
 
 # Initialize MCP server
-app = Server("codex-delegator")
+app = Server("provider-delegator")
 
 @app.list_tools()
 async def list_tools() -> list[Tool]:
@@ -32,8 +31,9 @@ async def list_tools() -> list[Tool]:
         Tool(
             name="invoke_agent",
             description=(
-                "Delegate a task to a specialized agent running on Codex. "
-                "Available agents: scout, detective, architect, scribe, code-reviewer."
+                "Delegate a task to a specialized agent. "
+                "Tries Codex first, falls back to Gemini if rate limited. "
+                "Available agents: scout, detective, architect, scribe, code-reviewer. "
                 "Agents have full MCP tool access (context7, vibe_kanban, playwright, github)."
             ),
             inputSchema={
@@ -75,31 +75,34 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
         template = agent_loader.load_agent(agent_name)
         logger.info(f"Loaded template for {agent_name} (model: {template.model})")
 
-        # Map agent's preferred model to Codex model
-        codex_model = CodexClient.map_model(template.model)
-        client = CodexClient(model=codex_model)
+        # Create provider chain with fallback support
+        chain = create_provider_chain(
+            agent_model=template.model,
+            agent_name=agent_name,
+        )
 
-        # Invoke Codex with agent's system prompt
-        response = await client.invoke(
+        # Invoke with fallback chain: Codex -> Gemini -> Skip (for code-reviewer)
+        result = await chain.invoke(
             system_prompt=template.system_prompt,
             user_prompt=task_prompt,
             task_id=task_id,
         )
 
-        logger.info(f"Agent {agent_name} completed successfully")
-
-        return [TextContent(
-            type="text",
-            text=response
-        )]
+        if result.success:
+            logger.info(f"Agent {agent_name} completed via {result.provider}")
+            return [TextContent(
+                type="text",
+                text=result.response
+            )]
+        else:
+            logger.error(f"Agent {agent_name} failed: {result.error}")
+            return [TextContent(
+                type="text",
+                text=f"ERROR: {result.error}"
+            )]
 
     except FileNotFoundError as e:
         error_msg = f"Agent template not found: {agent_name}. Error: {e}"
-        logger.error(error_msg)
-        return [TextContent(type="text", text=f"ERROR: {error_msg}")]
-
-    except RuntimeError as e:
-        error_msg = f"Codex invocation failed: {e}"
         logger.error(error_msg)
         return [TextContent(type="text", text=f"ERROR: {error_msg}")]
 
@@ -110,8 +113,9 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
 
 async def main():
     """Run the MCP server."""
-    logger.info(f"Starting MCP Codex Delegator")
+    logger.info("Starting MCP Provider Delegator")
     logger.info(f"Agent templates path: {AGENT_TEMPLATES_PATH}")
+    logger.info("Fallback chain: Codex -> Gemini -> Skip (code-reviewer only)")
 
     async with stdio_server() as (read_stream, write_stream):
         await app.run(
