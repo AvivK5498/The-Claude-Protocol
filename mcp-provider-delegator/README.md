@@ -9,7 +9,7 @@ Codex (primary) → Gemini (fallback) → Skip (code-reviewer only)
 ```
 
 - **Codex**: Primary provider, maps agent models to Codex tiers
-- **Gemini**: Fallback when Codex hits rate limits (`gemini-2.5-flash-preview`)
+- **Gemini**: Fallback when Codex hits rate limits (`gemini-3-flash-preview`)
 - **Skip**: For code-reviewer only - returns skip message if all providers fail
 
 ## Installation

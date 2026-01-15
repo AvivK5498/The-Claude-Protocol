@@ -132,7 +132,7 @@ class GeminiClient(ProviderClient):
     """Client for Google Gemini."""
 
     name = "gemini"
-    model = "gemini-2.5-flash-preview"
+    model = "gemini-3-flash-preview"
 
     async def invoke(self, prompt: str) -> str:
         """Invoke Gemini with prompt."""
