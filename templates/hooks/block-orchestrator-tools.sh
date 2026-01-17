@@ -29,8 +29,8 @@ fi
 
 [[ "$IS_SUBAGENT" == "true" ]] && exit 0
 
-# Orchestrator allowlist
-ALLOWED="Task|Bash|Glob|Read|AskUserQuestion|TodoWrite|Skill|EnterPlanMode|ExitPlanMode|mcp__provider_delegator__invoke_agent"
+# Orchestrator allowlist (NO Skill - supervisors use skills, orchestrators delegate)
+ALLOWED="Task|Bash|Glob|Read|AskUserQuestion|TodoWrite|EnterPlanMode|ExitPlanMode|mcp__provider_delegator__invoke_agent"
 
 if [[ ! "$TOOL_NAME" =~ ^($ALLOWED)$ ]]; then
   cat << EOF

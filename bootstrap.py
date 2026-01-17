@@ -140,7 +140,7 @@ def setup_provider_delegator() -> Path:
     This installs once and is reused by all projects.
     Returns path to venv python.
     """
-    print("\n[0/6] Setting up provider-delegator (shared)...")
+    print("\n[0/8] Setting up provider-delegator (shared)...")
 
     source_dir = SCRIPT_DIR / "mcp-provider-delegator"
     venv_dir = SHARED_MCP_DIR / ".venv"
@@ -214,7 +214,7 @@ def setup_provider_delegator() -> Path:
 
 def install_beads(project_dir: Path, claude_only: bool = False) -> bool:
     """Install beads CLI and initialize .beads directory."""
-    step = "[1/6]" if claude_only else "[1/7]"
+    step = "[1/7]" if claude_only else "[1/8]"
     print(f"\n{step} Installing beads...")
 
     beads_dir = project_dir / ".beads"
@@ -353,7 +353,7 @@ def copy_agents(project_dir: Path, project_name: str, claude_only: bool = False)
     NOTE: Supervisors are NOT copied here - they are created dynamically
     by the discovery agent based on detected tech stack.
     """
-    step = "[2/6]" if claude_only else "[2/7]"
+    step = "[2/7]" if claude_only else "[2/8]"
     print(f"\n{step} Copying core agent templates...")
 
     agents_dir = project_dir / ".claude" / "agents"
@@ -388,6 +388,41 @@ def copy_agents(project_dir: Path, project_name: str, claude_only: bool = False)
 
 
 # ============================================================================
+# SKILLS (TEMPLATE COPYING)
+# ============================================================================
+
+def copy_skills(project_dir: Path, claude_only: bool = False) -> list:
+    """Copy skill templates from templates/ directory.
+
+    Skills are copied so discovery agent can install them when tech stack is detected.
+    """
+    step = "[3/7]" if claude_only else "[3/8]"
+    print(f"\n{step} Copying skill templates...")
+
+    skills_template_dir = TEMPLATES_DIR / "skills"
+    if not skills_template_dir.exists():
+        print("  - No skill templates found, skipping")
+        return []
+
+    skills_dir = project_dir / ".claude" / "skills"
+    skills_dir.mkdir(parents=True, exist_ok=True)
+
+    copied = []
+
+    for skill_dir in skills_template_dir.iterdir():
+        if skill_dir.is_dir():
+            dest_dir = skills_dir / skill_dir.name
+            if dest_dir.exists():
+                shutil.rmtree(dest_dir)
+            shutil.copytree(skill_dir, dest_dir)
+            copied.append(skill_dir.name)
+            print(f"  - Copied {skill_dir.name}/ skill")
+
+    print(f"  DONE: {len(copied)} skill templates copied")
+    return copied
+
+
+# ============================================================================
 # HOOKS (TEMPLATE COPYING)
 # ============================================================================
 
@@ -398,7 +433,7 @@ def copy_hooks(project_dir: Path, claude_only: bool = False) -> list:
         project_dir: Target project directory
         claude_only: If True, skip provider delegation enforcement hooks
     """
-    step = "[3/6]" if claude_only else "[3/7]"
+    step = "[4/7]" if claude_only else "[4/8]"
     print(f"\n{step} Copying hook templates...")
 
     hooks_dir = project_dir / ".claude" / "hooks"
@@ -437,7 +472,7 @@ def copy_settings(project_dir: Path, claude_only: bool = False) -> None:
         project_dir: Target project directory
         claude_only: If True, remove provider delegation enforcement from settings
     """
-    step = "[4/6]" if claude_only else "[4/7]"
+    step = "[5/7]" if claude_only else "[5/8]"
     print(f"\n{step} Copying settings...")
 
     settings_template = TEMPLATES_DIR / "settings.json"
@@ -476,7 +511,7 @@ def copy_settings(project_dir: Path, claude_only: bool = False) -> None:
 
 def copy_claude_md(project_dir: Path, project_name: str, claude_only: bool = False) -> None:
     """Copy CLAUDE.md template with project name replacement."""
-    step = "[5/6]" if claude_only else "[5/7]"
+    step = "[6/7]" if claude_only else "[6/8]"
     print(f"\n{step} Copying CLAUDE.md...")
 
     claude_template = TEMPLATES_DIR / "CLAUDE.md"
@@ -495,7 +530,7 @@ def copy_claude_md(project_dir: Path, project_name: str, claude_only: bool = Fal
 
 def setup_gitignore(project_dir: Path, claude_only: bool = False) -> None:
     """Ensure .beads is in .gitignore. .claude/ is tracked (not ignored)."""
-    step = "[6/6]" if claude_only else "[6/7]"
+    step = "[7/7]" if claude_only else "[7/8]"
     print(f"\n{step} Setting up .gitignore...")
 
     gitignore_path = project_dir / ".gitignore"
@@ -548,7 +583,7 @@ def setup_gitignore(project_dir: Path, claude_only: bool = False) -> None:
 
 def create_mcp_config(project_dir: Path, venv_python: Path) -> None:
     """Add provider-delegator to .mcp.json, preserving existing servers."""
-    print("\n[7/7] Configuring MCP...")
+    print("\n[8/8] Configuring MCP...")
 
     mcp_dest = project_dir / ".mcp.json"
 
@@ -627,6 +662,12 @@ def verify_installation(project_dir: Path, claude_only: bool = False) -> bool:
         agent_count = len(list(agents_dir.glob("*.md")))
         print(f"  - Agents: {agent_count}")
 
+    skills_dir = project_dir / ".claude/skills"
+    if skills_dir.exists():
+        skill_count = len(list(skills_dir.iterdir()))
+        if skill_count > 0:
+            print(f"  - Skills: {skill_count}")
+
     return all_good
 
 
@@ -684,6 +725,7 @@ def main():
             sys.exit(1)
 
         copy_agents(project_dir, project_name, claude_only=False)
+        copy_skills(project_dir, claude_only=False)
         copy_hooks(project_dir, claude_only=False)
         copy_settings(project_dir, claude_only=False)
         copy_claude_md(project_dir, project_name, claude_only=False)
@@ -691,13 +733,14 @@ def main():
         create_mcp_config(project_dir, venv_python)
     else:
         # Claude-only mode: skip provider setup
-        print("\n[0/6] Skipping provider-delegator setup (claude-only mode)")
+        print("\n[0/7] Skipping provider-delegator setup (claude-only mode)")
 
         if not install_beads(project_dir, claude_only=True):
             print("\nERROR: Beads CLI is required. Aborting bootstrap.")
             sys.exit(1)
 
         copy_agents(project_dir, project_name, claude_only=True)
+        copy_skills(project_dir, claude_only=True)
         copy_hooks(project_dir, claude_only=True)
         copy_settings(project_dir, claude_only=True)
         copy_claude_md(project_dir, project_name, claude_only=True)

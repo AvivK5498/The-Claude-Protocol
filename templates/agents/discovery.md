@@ -138,12 +138,35 @@ You MUST abide by the following workflow:
 
 ---
 
+[FOR REACT/NEXT.JS SUPERVISORS ONLY - INSERT REACT BEST PRACTICES REQUIREMENT]
+
+---
+
 ## [Rest of external agent's specialty content goes here]
 ```
 
 **CRITICAL:** You MUST read the actual `.claude/beads-workflow-injection.md` file and insert its contents. Do NOT use any hardcoded workflow - the file contains the current workflow including code review requirements.
 
 **FOR FRONTEND SUPERVISORS:** Also read `.claude/ui-constraints.md` and insert after the beads workflow. Frontend supervisors include: react-supervisor, vue-supervisor, svelte-supervisor, angular-supervisor, nextjs-supervisor.
+
+**FOR REACT/NEXT.JS SUPERVISORS ONLY:** After UI constraints, add this mandatory skill requirement:
+
+```markdown
+## Mandatory: React Best Practices Skill
+
+<CRITICAL-REQUIREMENT>
+You MUST invoke the `react-best-practices` skill BEFORE implementing ANY React/Next.js code.
+
+This is NOT optional. Before writing components, hooks, data fetching, or any React code:
+
+1. Invoke: `Skill(skill="react-best-practices")`
+2. Review the relevant patterns for your task
+3. Apply the patterns as you implement
+
+The skill contains 40+ performance optimization rules across 8 categories.
+Failure to use this skill will result in suboptimal, unreviewed code.
+</CRITICAL-REQUIREMENT>
+```
 
 ### CRITICAL: Naming Convention
 
@@ -177,6 +200,53 @@ The filename and `name:` in YAML frontmatter MUST match and end in `-supervisor`
 | ML/AI | Iris |
 | Go developer | Grace |
 | Rust developer | Ruby |
+
+---
+
+## Step 3.5: Install React Best Practices Skill (React/Next.js Projects Only)
+
+**If React or Next.js was detected in Step 1, install the react-best-practices skill.**
+
+### Installation Steps
+
+1. **Create skills directory if it doesn't exist:**
+   ```bash
+   mkdir -p .claude/skills/react-best-practices
+   ```
+
+2. **Copy the skill from beads-orchestration templates:**
+
+   The skill template is located at: `templates/skills/react-best-practices/SKILL.md`
+
+   During bootstrap, this file should have been copied to the project. If running discovery manually, read from the orchestration repo and write to project:
+
+   ```
+   Read(file_path="[beads-orchestration-path]/templates/skills/react-best-practices/SKILL.md")
+   Write(file_path=".claude/skills/react-best-practices/SKILL.md", content=<skill-content>)
+   ```
+
+3. **Verify skill is accessible:**
+   ```
+   Glob(pattern=".claude/skills/react-best-practices/SKILL.md")
+   ```
+
+### Why This Skill is Required
+
+The react-best-practices skill contains 40+ performance optimization rules from Vercel Engineering:
+- Eliminating waterfalls (CRITICAL)
+- Bundle size optimization (CRITICAL)
+- Server-side performance (HIGH)
+- Client-side data fetching (MEDIUM-HIGH)
+- Re-render optimization (MEDIUM)
+- Rendering performance (MEDIUM)
+- JavaScript performance (LOW-MEDIUM)
+- Advanced patterns (LOW)
+
+Without this skill, React supervisors may write code that:
+- Creates waterfall async patterns
+- Imports entire libraries via barrel files
+- Doesn't use proper Suspense boundaries
+- Serializes unnecessary data across RSC boundaries
 
 ---
 
@@ -255,6 +325,9 @@ SUPERVISORS_CREATED:
 
 BEADS_WORKFLOW_INJECTED: Yes (all implementation agents)
 
+SKILLS_INSTALLED:
+  - react-best-practices: [Yes/No/N/A] (React/Next.js projects only)
+
 EXTERNAL_DIRECTORY_STATUS: [Available/Unavailable]
   - Specialists found: [list]
   - Specialists not found: [list]
@@ -296,3 +369,5 @@ Before reporting:
 - [ ] Agent files have correct YAML frontmatter
 - [ ] Names assigned from suggested list
 - [ ] CLAUDE.md updated with supervisor list
+- [ ] React best practices skill installed (if React/Next.js detected)
+- [ ] React supervisor has mandatory skill requirement (if React/Next.js detected)
