@@ -111,13 +111,13 @@ EOF
       fi
     fi
 
-    # CRITICAL: Validate code review before closing bead
+    # CRITICAL: Validate code review AND merge before closing bead
     if [[ "$SECOND_WORD" == "update" ]] && [[ "$COMMAND" == *"done"* ]]; then
       # Extract bead ID from command (e.g., "bd update BD-001 --status done")
       BEAD_ID=$(echo "$COMMAND" | grep -oE 'BD-[0-9]+' | head -1)
 
       if [[ -n "$BEAD_ID" ]]; then
-        # Check if bead has CODE REVIEW: APPROVED comment
+        # Check 1: Code review approval
         COMMENTS=$(bd comments "$BEAD_ID" 2>/dev/null)
 
         if [[ "$COMMENTS" != *"CODE REVIEW: APPROVED"* ]]; then
@@ -125,6 +125,23 @@ EOF
 {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Cannot close $BEAD_ID - no code review approval found. Dispatch code-reviewer first: Task(subagent_type='code-reviewer', prompt='Review BEAD_ID: $BEAD_ID on branch bd-$BEAD_ID'). After approval, retry closing."}}
 EOF
           exit 0
+        fi
+
+        # Check 2: Branch must be merged
+        BRANCH_NAME="bd-$BEAD_ID"
+
+        # Check if branch still exists (not merged/deleted)
+        if git show-ref --verify --quiet "refs/heads/$BRANCH_NAME" 2>/dev/null; then
+          # Branch exists - check if it's been merged into current branch (main)
+          CURRENT_BRANCH=$(git branch --show-current 2>/dev/null)
+
+          # Check if branch is merged into main
+          if ! git branch --merged main 2>/dev/null | grep -q "$BRANCH_NAME"; then
+            cat << EOF
+{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Cannot close $BEAD_ID - branch '$BRANCH_NAME' not merged. Merge first: git checkout main && git merge $BRANCH_NAME && git branch -d $BRANCH_NAME. Then retry closing."}}
+EOF
+            exit 0
+          fi
         fi
       fi
     fi
