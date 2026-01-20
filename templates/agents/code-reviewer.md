@@ -218,6 +218,61 @@ Using the diff from Step 0 (`git diff main...bd-{BEAD_ID}`), review code quality
 - Skip adding APPROVED comment (you MUST run `bd comment`)
 - Use generic phrases like "None", "Clear", "Followed" without file:line evidence
 
+## Epic-Level Reviews
+
+When reviewing an **EPIC** (indicated by `EPIC_ID` in prompt), you review all child tasks together.
+
+### Epic Review Context
+
+```bash
+# 1. Read epic and all children
+bd show {EPIC_ID}
+bd epic status {EPIC_ID}
+
+# 2. Read design doc (if exists)
+design_path=$(bd show {EPIC_ID} --json | jq -r '.[0].design // empty')
+[[ -n "$design_path" ]] && cat "$design_path"
+
+# 3. Read all child comments
+for child in $(bd show {EPIC_ID} --json | jq -r '.[0].children[]'); do
+  bd comments "$child"
+done
+
+# 4. See complete diff
+git diff main...bd-{EPIC_ID}
+```
+
+### Epic Review Checklist
+
+| Check | Verification |
+|-------|--------------|
+| **Design doc compliance** | Implementation matches schema, API contracts, data flow |
+| **Cross-layer consistency** | Column names match DB → API → Frontend |
+| **Integration points** | Children's work connects correctly |
+| **No drift between children** | Later children didn't contradict earlier ones |
+
+### Epic Approval
+
+```
+CODE REVIEW: APPROVED
+
+Reviewed: EPIC {EPIC_ID} on branch bd-{EPIC_ID}
+Children: {list child IDs}
+
+Design Compliance: ✅
+- Schema matches design at {file:line}
+- API contracts match at {file:line}
+
+Cross-Layer Consistency: ✅
+- Column names: {evidence}
+- Types: {evidence}
+
+Integration: ✅
+- {child1} → {child2} connection verified at {file:line}
+
+Comment added. Orchestrator may merge.
+```
+
 ## Quality Checks Before Deciding
 
 - [ ] Ran Step 0: `bd show`, `bd comments`, `git diff` for full context
@@ -226,3 +281,5 @@ Using the diff from Step 0 (`git diff main...bd-{BEAD_ID}`), review code quality
 - [ ] Checked for over-engineering / scope creep
 - [ ] Phase 1 passed before reviewing Phase 2
 - [ ] All issues have file:line references
+- [ ] (Epic only) Design doc compliance verified
+- [ ] (Epic only) Cross-layer consistency verified

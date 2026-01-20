@@ -1,11 +1,6 @@
 #!/bin/bash
 #
-# UserPromptSubmit: Force clarification on vague requests
-#
-# Adaptive behavior based on prompt length:
-# - Short prompts (<50 chars): Strong directive to use AskUserQuestion
-# - Medium prompts (50-200 chars): Gentle reminder
-# - Long prompts (>200 chars): No reminder (assume detailed)
+# UserPromptSubmit: Force clarification on vague requests + epic reminder
 #
 # Uses plain text stdout for context injection (per Claude Code docs)
 #
@@ -34,4 +29,11 @@ This request may be ambiguous. Consider using AskUserQuestion to clarify before 
 </system-reminder>
 EOF
 fi
-# Long prompts: no output (nothing added to context)
+
+# Always remind about epic workflow
+cat << 'EOF'
+<cross-domain-check>
+CRITICAL: If this task spans multiple supervisors, you MUST create an EPIC.
+Cross-domain = Epic. No exceptions.
+</cross-domain-check>
+EOF

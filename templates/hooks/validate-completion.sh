@@ -23,28 +23,57 @@ if [[ "$AGENT_TYPE" =~ supervisor ]]; then
   fi
 
   if [[ "$IS_WORKER" == "false" ]]; then
-    # Supervisors must include completion report per beads-workflow-injection.md format:
-    # BEAD {BEAD_ID} COMPLETE
-    # Branch: bd-{BEAD_ID}
-    # ...
+    # Check if this is an epic child task (BEAD_ID contains dot like BD-001.1)
+    # Epic children do NOT require code review - review happens at epic level
+    BEAD_ID_FROM_RESPONSE=$(echo "$LAST_RESPONSE" | grep -oE "BEAD [A-Za-z0-9._-]+" | head -1 | awk '{print $2}')
+    IS_EPIC_CHILD="false"
+    if [[ "$BEAD_ID_FROM_RESPONSE" == *"."* ]]; then
+      IS_EPIC_CHILD="true"
+    fi
+
+    # Supervisors must include completion report
     HAS_BEAD_COMPLETE=$(echo "$LAST_RESPONSE" | grep -cE "BEAD.*COMPLETE" 2>/dev/null || true)
     HAS_BRANCH=$(echo "$LAST_RESPONSE" | grep -cE "Branch:.*bd-" 2>/dev/null || true)
+    [[ -z "$HAS_BEAD_COMPLETE" ]] && HAS_BEAD_COMPLETE=0
+    [[ -z "$HAS_BRANCH" ]] && HAS_BRANCH=0
 
-    # Supervisors must leave at least 1 comment on the bead
-    # Note: grep -c exits 1 when no matches but still outputs "0", so use || true
+    # Check completion format first (required for all)
+    if [[ "$HAS_BEAD_COMPLETE" -lt 1 ]] || [[ "$HAS_BRANCH" -lt 1 ]]; then
+      if [[ "$IS_EPIC_CHILD" == "true" ]]; then
+        cat << 'EOF'
+{"decision":"block","reason":"Epic child task completion format required:\n\nBEAD {BEAD_ID} COMPLETE\nBranch: {EPIC_BRANCH}\nFiles: [list]\nSummary: [1 sentence]\n\nRun: bd update {BEAD_ID} --status done\n\nNote: Code review happens at EPIC level after all children complete."}
+EOF
+      else
+        cat << 'EOF'
+{"decision":"block","reason":"Supervisor must use completion report format:\n\nBEAD {BEAD_ID} COMPLETE\nBranch: bd-{BEAD_ID}\nFiles: [list]\nTests: pass\nSummary: [1 sentence]\n\nRun bd update {BEAD_ID} --status inreview first."}
+EOF
+      fi
+      exit 0
+    fi
+
+    # Epic children skip code review - approve if completion format is correct
+    if [[ "$IS_EPIC_CHILD" == "true" ]]; then
+      # Just check for at least 1 comment
+      HAS_COMMENT=$(grep -c '"bd comment\|"command":"bd comment' "$AGENT_TRANSCRIPT" 2>/dev/null) || HAS_COMMENT=0
+      [[ -z "$HAS_COMMENT" ]] && HAS_COMMENT=0
+
+      if [[ "$HAS_COMMENT" -lt 1 ]]; then
+        cat << 'EOF'
+{"decision":"block","reason":"Child task must leave at least 1 comment.\n\nRun: bd comment {BEAD_ID} \"Completed: [brief summary]\"\n\nThis provides context for epic-level code review."}
+EOF
+        exit 0
+      fi
+
+      # Epic child approved (no code review needed)
+      echo '{"decision":"approve"}'
+      exit 0
+    fi
+
+    # Non-epic tasks: require code review
     HAS_COMMENT=$(grep -c '"bd comment\|"command":"bd comment' "$AGENT_TRANSCRIPT" 2>/dev/null) || HAS_COMMENT=0
-
-    # Supervisors must get code review approval before completing
-    # Check for ACTUAL code-reviewer dispatch (not just reading the file):
-    # - Claude-only: Task with subagent_type="code-reviewer"
-    # - External providers: mcp__provider_delegator__invoke_agent with agent="code-reviewer"
-    # Note: Supervisors cannot self-approve - must dispatch actual code-reviewer agent
     HAS_CODE_REVIEW_DISPATCH=$(grep -cE '"subagent_type":\s*"code-reviewer"|"subagent_type":"code-reviewer"|subagent_type.*code-reviewer|mcp__provider_delegator__invoke_agent.*code-reviewer|"agent":\s*"code-reviewer"' "$AGENT_TRANSCRIPT" 2>/dev/null) || HAS_CODE_REVIEW_DISPATCH=0
     HAS_APPROVED=$(grep -c 'CODE REVIEW: APPROVED\|"CODE REVIEW: APPROVED"' "$AGENT_TRANSCRIPT" 2>/dev/null) || HAS_APPROVED=0
 
-    # Default to 0 if empty
-    [[ -z "$HAS_BEAD_COMPLETE" ]] && HAS_BEAD_COMPLETE=0
-    [[ -z "$HAS_BRANCH" ]] && HAS_BRANCH=0
     [[ -z "$HAS_COMMENT" ]] && HAS_COMMENT=0
     [[ -z "$HAS_CODE_REVIEW_DISPATCH" ]] && HAS_CODE_REVIEW_DISPATCH=0
     [[ -z "$HAS_APPROVED" ]] && HAS_APPROVED=0
@@ -57,17 +86,10 @@ EOF
       exit 0
     fi
 
-    # Check for at least 1 comment (satisfied by APPROVED comment)
+    # Check for at least 1 comment
     if [[ "$HAS_COMMENT" -lt 1 ]]; then
       cat << 'EOF'
 {"decision":"block","reason":"Supervisor must leave at least 1 comment on the bead.\n\nRun: bd comment {BEAD_ID} \"Completed: [brief summary of work done]\"\n\nComments provide context for code review and future reference."}
-EOF
-      exit 0
-    fi
-
-    if [[ "$HAS_BEAD_COMPLETE" -lt 1 ]] || [[ "$HAS_BRANCH" -lt 1 ]]; then
-      cat << 'EOF'
-{"decision":"block","reason":"Supervisor must use completion report format:\n\nBEAD {BEAD_ID} COMPLETE\nBranch: bd-{BEAD_ID}\nFiles: [list]\nTests: pass\nSummary: [1 sentence]\n\nRun bd update {BEAD_ID} --status inreview first."}
 EOF
       exit 0
     fi

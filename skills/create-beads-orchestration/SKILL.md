@@ -192,6 +192,48 @@ rm -rf "${TMPDIR:-/tmp}/beads-orchestration-setup"
 - MCP Provider Delegator enables Codex→Gemini→Claude fallback chain
 - Additional enforcement hooks for provider delegation
 
+## Epic Workflow (Cross-Domain Features)
+
+For features requiring multiple supervisors (e.g., DB + API + Frontend), use the **epic workflow**:
+
+### When to Use Epics
+
+| Task Type | Workflow |
+|-----------|----------|
+| Single-domain (one supervisor) | Standalone bead |
+| Cross-domain (multiple supervisors) | Epic with children |
+
+### Epic Workflow Steps
+
+1. **Create epic**: `bd create "Feature name" -d "Description" --type epic`
+2. **Create design doc** (if needed): Dispatch architect to create `.designs/{EPIC_ID}.md`
+3. **Link design**: `bd update {EPIC_ID} --design ".designs/{EPIC_ID}.md"`
+4. **Create children with dependencies**:
+   ```bash
+   bd create "DB schema" -d "..." --parent {EPIC_ID}              # BD-001.1
+   bd create "API endpoints" -d "..." --parent {EPIC_ID} --deps BD-001.1  # BD-001.2
+   bd create "Frontend" -d "..." --parent {EPIC_ID} --deps BD-001.2       # BD-001.3
+   ```
+5. **Dispatch sequentially**: Use `bd ready` to find unblocked tasks
+6. **Epic-level code review**: After all children complete
+7. **Merge**: `git merge bd-{EPIC_ID}` then `bd close {EPIC_ID}`
+
+### Design Docs
+
+Design docs ensure consistency across epic children:
+- Schema definitions (exact column names, types)
+- API contracts (endpoints, request/response shapes)
+- Shared constants/enums
+- Data flow between layers
+
+**Key rule**: Orchestrator dispatches architect to create design docs. Orchestrator never writes design docs directly.
+
+### Hooks Enforce Epic Workflow
+
+- **enforce-sequential-dispatch.sh**: Blocks dispatch if task has unresolved blockers
+- **enforce-bead-for-supervisor.sh**: Requires `EPIC_BRANCH` for child tasks
+- **validate-completion.sh**: Epic children skip per-task code review (review at epic level)
+
 ## Requirements
 
 **Claude only mode (default):**

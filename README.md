@@ -335,6 +335,50 @@ ON COMPLETION:
   13. If not approved → Fix issues, repeat code review
 ```
 
+### Epic Workflow (Cross-Domain Features)
+
+For features spanning multiple supervisors (DB + API + Frontend), use epics:
+
+```
+CRITICAL: If a task spans multiple supervisors, you MUST create an EPIC.
+Cross-domain = Epic. No exceptions.
+```
+
+**When to Use Epic vs Standalone:**
+
+| Signals | Workflow |
+|---------|----------|
+| Single tech domain | Standalone bead |
+| Multiple supervisors needed | **Epic** |
+| "First X, then Y" thinking | **Epic** |
+| Infrastructure + code change | **Epic** |
+
+**Epic Workflow:**
+
+```bash
+# 1. Create epic
+bd create "Feature X" -d "Description" --type epic
+git checkout -b bd-{EPIC_ID}
+
+# 2. Create design doc (architect creates .designs/{EPIC_ID}.md)
+bd update {EPIC_ID} --design ".designs/{EPIC_ID}.md"
+
+# 3. Create children with dependencies
+bd create "DB schema" -d "..." --parent {EPIC_ID}              # .1
+bd create "API endpoints" -d "..." --parent {EPIC_ID} --deps {EPIC_ID}.1  # .2
+bd create "Frontend" -d "..." --parent {EPIC_ID} --deps {EPIC_ID}.2       # .3
+
+# 4. Dispatch children sequentially (use bd ready to find unblocked tasks)
+# 5. Epic-level code review after ALL children complete
+# 6. Merge: git merge bd-{EPIC_ID} && bd close {EPIC_ID}
+```
+
+**Key Differences from Standalone:**
+- Children work on shared epic branch (not individual branches)
+- Children skip per-task code review (review at epic level)
+- Design doc ensures consistency across children
+- Hook enforces sequential dispatch based on `--deps`
+
 ### Parallel Work
 
 The branch-per-bead model enables parallel development:
@@ -462,13 +506,14 @@ Implement → Run tests → Run RAMS → Run WIG → Fix issues → Document on 
 |------|-----------|------|---------|
 | `block-orchestrator-tools.sh` | PreToolUse | Both | Prevents orchestrator from using Edit/Write/etc. |
 | `enforce-codex-delegation.sh` | PreToolUse (Task) | External only | Forces read-only agents to use provider_delegator |
-| `enforce-bead-for-supervisor.sh` | PreToolUse (Task) | Both | Requires BEAD_ID for supervisors |
+| `enforce-bead-for-supervisor.sh` | PreToolUse (Task) | Both | Requires BEAD_ID for supervisors, EPIC_BRANCH for children |
+| `enforce-sequential-dispatch.sh` | PreToolUse (Task) | Both | Blocks epic children with unresolved deps, enforces design doc |
 | `remind-inprogress.sh` | PreToolUse (Task) | Both | Warns about in-progress beads |
 | `enforce-concise-response.sh` | PostToolUse (Task) | Both | Limits response verbosity |
-| `validate-completion.sh` | SubagentStop | Both | Blocks completion without code review |
+| `validate-completion.sh` | SubagentStop | Both | Blocks completion without code review (skips for epic children) |
 | `enforce-frontend-reviews.sh` | SubagentStop | Both | Requires RAMS + WIG reviews for frontend supervisors |
 | `session-start.sh` | SessionStart | Both | Session initialization |
-| `clarify-vague-request.sh` | UserPromptSubmit | Both | Prompts for clarification on vague requests |
+| `clarify-vague-request.sh` | UserPromptSubmit | Both | Clarification prompts + cross-domain epic reminder |
 
 **Note:** In Claude-only mode, `enforce-codex-delegation.sh` is not installed since all agents use Task() directly.
 

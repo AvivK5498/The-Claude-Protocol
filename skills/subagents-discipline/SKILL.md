@@ -184,6 +184,39 @@ STEP 7: HANDLE inaccessible credentials
         Record human's choice in .verification_logs/{BEAD_ID}.md.
 ```
 
+### Design Doc Discovery (Epic Children)
+
+If your BEAD_ID contains a dot (e.g., BD-001.2), you are a child task of an epic. Check for design doc:
+
+```
+STEP 1: EXTRACT epic ID
+        EPIC_ID = everything before the last dot
+        Example: BD-001.2 → EPIC_ID = BD-001
+
+STEP 2: CHECK for design doc
+        Run: design_path=$(bd show {EPIC_ID} --json | jq -r '.[0].design // empty')
+        Run: echo "Design path: $design_path"
+
+STEP 3: If design doc exists, READ it
+        Run: [[ -n "$design_path" && -f "$design_path" ]] && cat "$design_path"
+
+STEP 4: EXTRACT specifications from design doc
+        Document in verification log:
+        - Schema: [exact column names, types from design]
+        - API contracts: [endpoints, request/response shapes]
+        - Shared constants: [any enums or constants defined]
+
+STEP 5: Your implementation MUST match design doc
+        - Use EXACT column names from design (not variations)
+        - Use EXACT API shapes from design
+        - Use EXACT constant values from design
+
+        If design says: column "reference_image_url" VARCHAR(255)
+        You MUST use: reference_image_url (not reference_images, not image_url)
+```
+
+**Why this matters:** Design docs exist to ensure consistency across epic children. DB supervisor creates schema matching design. API supervisor creates endpoints matching design. Frontend supervisor consumes API matching design. If any layer deviates, the integration fails.
+
 ### Infrastructure Discovery Checklist
 
 Before proceeding to Phase 1, you must know:
@@ -192,6 +225,7 @@ Before proceeding to Phase 1, you must know:
 - [ ] API base URL (or confirmed no external API, or documented as UNVERIFIED)
 - [ ] Authentication method (token, API key, none, or documented as UNVERIFIED)
 - [ ] Environment confirmed as non-production (or human accepted risk)
+- [ ] Design doc read and specifications extracted (epic children only)
 
 ---
 
