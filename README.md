@@ -508,6 +508,7 @@ Implement → Run tests → Run RAMS → Run WIG → Fix issues → Document on 
 | `enforce-codex-delegation.sh` | PreToolUse (Task) | External only | Forces read-only agents to use provider_delegator |
 | `enforce-bead-for-supervisor.sh` | PreToolUse (Task) | Both | Requires BEAD_ID for supervisors, EPIC_BRANCH for children |
 | `enforce-sequential-dispatch.sh` | PreToolUse (Task) | Both | Blocks epic children with unresolved deps, enforces design doc |
+| `block-branch-for-epic-child.sh` | PreToolUse (Bash) | Both | Blocks `git checkout -b` for epic children (must use shared branch) |
 | `remind-inprogress.sh` | PreToolUse (Task) | Both | Warns about in-progress beads |
 | `enforce-concise-response.sh` | PostToolUse (Task) | Both | Limits response verbosity |
 | `validate-completion.sh` | SubagentStop | Both | Blocks completion without code review (skips for epic children) |
