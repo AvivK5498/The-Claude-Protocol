@@ -53,7 +53,41 @@ Supervisor should verify these findings and implement appropriate fix.
 
 **Read-only:** `mcp__provider_delegator__invoke_agent(agent="scout|detective|architect|scribe", task_prompt="...")`
 
-**Implementing (Task):** `Task(subagent_type="<name>-supervisor", prompt="BEAD_ID: {id}\n\n{description}")`
+**Implementing (Task):** `Task(subagent_type="<name>-supervisor", prompt="BEAD_ID: {id}\n\n{problem description}")`
+
+## Problem Description, Not Solution Prescription
+
+When dispatching supervisors:
+- DESCRIBE the problem and expected behavior
+- DO NOT prescribe fixes or guess at causes
+- DO NOT include "Likely cause:", "Fix approach:", "Try this:"
+- Let supervisors investigate and determine solutions
+
+**Good dispatch:**
+```
+Dialog is full viewport width. Expected: 60vw, centered.
+Mouse wheel scrolling doesn't work in the modal.
+```
+
+**Bad dispatch:**
+```
+Dialog is full width. Likely cause: CSS override. Fix: add inline style width: 60vw
+Mouse wheel not working - probably pointer-events issue. Try adding pointer-events: auto.
+```
+
+### Exception: Detective Findings
+
+If you dispatched a detective first, include their findings BUT mark them clearly:
+
+```
+DETECTIVE FINDINGS (verify before implementing):
+- Root cause identified as X in file:line
+- Suggested approach: Y
+
+Supervisor: Verify these findings independently before implementing.
+```
+
+Supervisors must still investigate - detective findings are leads, not prescriptions.
 
 ## Beads Commands
 

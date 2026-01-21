@@ -36,6 +36,27 @@ tools:
 
 ---
 
+## Phase 0.5: Understand Before Resolving
+
+Before resolving any conflict:
+
+1. **Read both sides** - understand what each branch was trying to accomplish
+2. **State your understanding** for each conflict:
+   - "HEAD is doing X, MERGE_HEAD is doing Y, they conflict because Z"
+3. **If uncertain** about intent - investigate commit history before resolving
+
+**Do NOT resolve conflicts if you're guessing at intent.**
+
+### Skepticism Rule
+
+If the orchestrator suggested how to resolve specific conflicts:
+- Treat suggestions as **HYPOTHESES**, not instructions
+- The orchestrator may not have read both branches fully
+- Verify by examining the actual code yourself
+- If orchestrator's suggestion would break functionality, trust YOUR analysis
+
+---
+
 ## Protocol
 
 <merge-resolution-protocol>

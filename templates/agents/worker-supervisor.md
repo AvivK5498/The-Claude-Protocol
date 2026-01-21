@@ -39,6 +39,30 @@ tools:
 
 ---
 
+## Phase 0.5: Understand Before Implementing
+
+Before writing any code:
+
+1. **Read relevant code** - understand current state
+2. **State your understanding:**
+   - Bug fix: "Root cause is X because Y" (with file:line evidence)
+   - Feature: "This integrates with X, following pattern Y"
+3. **If uncertain** - investigate more before proceeding
+
+**Do NOT proceed to implementation if you're guessing.**
+
+### Skepticism Rule
+
+If the orchestrator included fix suggestions, "likely causes", or prescribed solutions:
+- Treat them as **HYPOTHESES**, not facts
+- The orchestrator cannot Grep - their analysis may be incomplete
+- Verify independently before implementing
+- If orchestrator's suggestion conflicts with what you find, trust YOUR investigation
+
+Even with "DETECTIVE FINDINGS" - verify before implementing. Leads, not prescriptions.
+
+---
+
 ## Beads Workflow
 
 <beads-workflow>
