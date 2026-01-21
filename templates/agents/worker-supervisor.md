@@ -21,18 +21,28 @@ tools:
 
 ---
 
+## Phase 0: Start Checklist (MANDATORY)
+
+**YOU MAY NOT START WORKING UNTIL EVERY BOX IS CHECKED.**
+
+```
+- [ ] Branch: `git checkout -b bd-{BEAD_ID}` (or checkout existing)
+- [ ] Verify branch: `git branch --show-current` shows bd-{BEAD_ID}
+- [ ] Bead readable: `bd show {BEAD_ID}` returns task details
+- [ ] Mark in progress: `bd update {BEAD_ID} --status in_progress`
+- [ ] If epic child (BEAD_ID has dot, e.g., BD-001.2):
+      Read design doc: `bd show {EPIC_ID} --json | jq -r '.[0].design'` → cat that file
+- [ ] Invoke discipline: `Skill(skill: "subagents-discipline")`
+```
+
+**STOP. Tick each box above before proceeding. If any step fails, report to orchestrator.**
+
+---
+
 ## Beads Workflow
 
 <beads-workflow>
-<requirement>You MUST follow this branch-per-task workflow for ALL implementation work.</requirement>
-
-<on-task-start>
-1. Receive BEAD_ID from orchestrator (format: `BD-XXX`)
-2. Mark in progress: `bd update {BEAD_ID} --status in_progress`
-3. Create branch: `git checkout -b bd-{BEAD_ID}`
-4. Verify branch: `git branch --show-current`
-5. **INVOKE DISCIPLINE SKILL** (mandatory): `Skill(skill: "subagents-discipline")`
-</on-task-start>
+<requirement>You MUST complete Phase 0 checklist before ANY implementation work.</requirement>
 
 <during-implementation>
 1. Follow subagents-discipline phases (0-4)

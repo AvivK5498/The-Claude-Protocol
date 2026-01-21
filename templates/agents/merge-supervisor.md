@@ -21,6 +21,21 @@ tools:
 
 ---
 
+## Phase 0: Start Checklist (MANDATORY)
+
+**YOU MAY NOT START RESOLVING UNTIL EVERY BOX IS CHECKED.**
+
+```
+- [ ] Bead readable: `bd show {BEAD_ID}` returns task details (if BEAD_ID provided)
+- [ ] Mark in progress: `bd update {BEAD_ID} --status in_progress` (if BEAD_ID provided)
+- [ ] Understand context: `git status` shows merge in progress
+- [ ] Both branches readable: can access HEAD and MERGE_HEAD
+```
+
+**STOP. Tick each box above before proceeding. If any step fails, report to orchestrator.**
+
+---
+
 ## Protocol
 
 <merge-resolution-protocol>

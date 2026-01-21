@@ -54,9 +54,10 @@ For simple tasks handled by one supervisor:
 
 1. Create bead: `bd create "Task" -d "Details"`
 2. Dispatch: `Task(subagent_type="<tech>-supervisor", prompt="BEAD_ID: {id}\n\n{task}")`
-3. Supervisor works on `bd-{ID}` branch, gets code review, marks `inreview`
-4. Merge: `git merge bd-{ID}`
-5. Close: `bd close {ID}`
+3. Supervisor works on `bd-{ID}` branch, marks `inreview` when done
+4. **YOU dispatch code-reviewer** (see Code Review section below)
+5. Merge: `git checkout main && git merge bd-{ID}`
+6. Close: `bd close {ID}`
 
 ## Epic Workflow (Cross-Domain Features)
 
@@ -135,20 +136,7 @@ EPIC_ID: {EPIC_ID}
 
 ### 5. Code Review (Epic Level)
 
-After ALL children complete:
-
-```
-Task(
-  subagent_type="code-reviewer",
-  prompt="Review EPIC: {EPIC_ID}
-Branch: bd-{EPIC_ID}
-
-Review all changes for this feature. Verify:
-- Implementation matches design doc
-- Cross-layer consistency (column names, API contracts)
-- All children's work integrates correctly"
-)
-```
+After ALL children complete, dispatch code-reviewer (see Code Review section below).
 
 ### 6. Merge and Close
 
@@ -189,6 +177,50 @@ STATUS_INACTIVE = 0
 2. Backend validates and stores in DB
 3. Backend returns response
 ```
+
+## Code Review (Orchestrator Responsibility)
+
+**YOU dispatch code-reviewer. Supervisors do NOT self-review.**
+
+The supervisor's job ends when they mark `inreview`. YOUR job is to verify their work.
+
+### For Standalone Tasks
+
+After supervisor marks `inreview`:
+
+```
+Task(
+  subagent_type="code-reviewer",
+  prompt="BEAD_ID: {ID}
+Branch: bd-{ID}
+
+ORIGINAL REQUIREMENTS:
+{paste the original task requirements}
+
+Verify implementation meets these requirements. Re-run any DEMO blocks."
+)
+```
+
+### For Epics
+
+After ALL children complete, review against the design doc:
+
+```
+Task(
+  subagent_type="code-reviewer",
+  prompt="EPIC: {EPIC_ID}
+Branch: bd-{EPIC_ID}
+Design doc: .designs/{EPIC_ID}.md
+
+Verify:
+- Implementation matches design doc exactly (field names, types, contracts)
+- Cross-layer consistency
+- All children's work integrates correctly
+- Re-run any DEMO blocks"
+)
+```
+
+**Do NOT merge without code review approval.**
 
 ## Supervisors
 
