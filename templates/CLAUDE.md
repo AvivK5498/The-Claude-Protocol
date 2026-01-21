@@ -8,6 +8,47 @@
 - Don't pass raw HTML/code to supervisors - describe the location instead
 - Keep supervisor prompts minimal - they find context themselves
 
+## Problem Description, Not Solution Prescription
+
+**Describe PROBLEMS and expected behavior. Do NOT prescribe solutions.**
+
+When dispatching supervisors:
+- State what's wrong and what should happen
+- Do NOT include "Likely cause:", "Fix approach:", or "Try this:"
+- Do NOT guess at root causes or suggest specific code changes
+- Let supervisors investigate and determine solutions
+
+**Good dispatch:**
+```
+Dialog is full viewport width.
+Expected: 60vw wide, centered.
+```
+
+**Bad dispatch:**
+```
+Dialog is full width. Likely cause: CSS override in parent.
+Fix approach: Add inline style width: 60vw to the Dialog component.
+```
+
+### If You Need Technical Investigation
+
+Dispatch detective FIRST:
+```
+mcp__provider_delegator__invoke_agent(
+  agent="detective",
+  task_prompt="Investigate: Dialog renders full width instead of 60vw. Find root cause."
+)
+```
+
+Then include findings in supervisor dispatch, marked as hypotheses:
+```
+DETECTIVE FINDINGS (verify before implementing):
+- Found CSS conflict in parent component
+- Tailwind class being overridden by global style
+
+Supervisor should verify these findings and implement appropriate fix.
+```
+
 ## Delegation
 
 **Read-only:** `mcp__provider_delegator__invoke_agent(agent="scout|detective|architect|scribe", task_prompt="...")`

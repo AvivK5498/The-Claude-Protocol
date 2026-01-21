@@ -7,6 +7,12 @@
         ]
       },
       {
+        "matcher": "Read",
+        "hooks": [
+          {"type": "command", "command": ".claude/hooks/warn-orchestrator-code-read.sh"}
+        ]
+      },
+      {
         "matcher": "Task",
         "hooks": [
           {"type": "command", "command": ".claude/hooks/enforce-codex-delegation.sh"},
