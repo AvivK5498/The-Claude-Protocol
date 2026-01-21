@@ -199,5 +199,4 @@ STATUS_INACTIVE = 0
 ## Supervisors
 
 <!-- Populated by discovery agent -->
-- worker-supervisor
 - merge-supervisor

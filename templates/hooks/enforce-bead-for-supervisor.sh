@@ -2,8 +2,8 @@
 #
 # PreToolUse:Task - Enforce bead exists before supervisor dispatch
 #
-# Supervisors (except worker) must have BEAD_ID in prompt.
-# This ensures all significant work is tracked.
+# All supervisors must have BEAD_ID in prompt.
+# This ensures all work is tracked.
 #
 
 INPUT=$(cat)
@@ -17,13 +17,10 @@ PROMPT=$(echo "$INPUT" | jq -r '.tool_input.prompt // empty')
 # Only enforce for supervisors
 [[ ! "$SUBAGENT_TYPE" =~ supervisor ]] && exit 0
 
-# Worker-supervisor is exempt (handles small tasks without beads)
-[[ "$SUBAGENT_TYPE" == *"worker"* ]] && exit 0
-
 # Check for BEAD_ID in prompt
 if [[ "$PROMPT" != *"BEAD_ID:"* ]]; then
   cat << 'EOF'
-{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"<bead-required>\n<priority>CREATE A BEAD FIRST - Do NOT dispatch worker-supervisor as a workaround.</priority>\n\n<rule>\nAll supervisor work MUST be tracked with a bead.\nWorker-supervisor is ONLY for trivial tasks (typos, single-line fixes, config tweaks).\nIf the task requires more than minimal code changes, CREATE A BEAD.\n</rule>\n\n<action>\nFor standalone tasks:\n  1. bd create \"Task title\" -d \"Description\"\n  2. Dispatch with: BEAD_ID: {id}\n\nFor epic children (cross-domain features):\n  1. bd create \"Epic\" -d \"...\" --type epic\n  2. bd create \"Child\" -d \"...\" --parent {EPIC_ID}\n  3. Dispatch with: BEAD_ID: {child_id}, EPIC_BRANCH: bd-{epic_id}, EPIC_ID: {epic_id}\n</action>\n</bead-required>"}}
+{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"<bead-required>\nAll supervisor work MUST be tracked with a bead.\n\n<action>\nFor standalone tasks:\n  1. bd create \"Task title\" -d \"Description\"\n  2. Dispatch with: BEAD_ID: {id}\n\nFor epic children (cross-domain features):\n  1. bd create \"Epic\" -d \"...\" --type epic\n  2. bd create \"Child\" -d \"...\" --parent {EPIC_ID}\n  3. Dispatch with: BEAD_ID: {child_id}, EPIC_BRANCH: bd-{epic_id}, EPIC_ID: {epic_id}\n</action>\n</bead-required>"}}
 EOF
   exit 0
 fi
