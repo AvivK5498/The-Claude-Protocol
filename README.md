@@ -36,19 +36,19 @@ The skill walks you through setup, runs the bootstrap via `npx`, then creates te
 
 ## Key Features
 
-**Orchestrator / Supervisor separation** — The orchestrator investigates with Grep, Read, Glob, then delegates implementation to tech-specific supervisors via `Task()`. It never edits code directly. Hooks enforce this.
+🔍 **Investigate → Delegate** — Orchestrator reads code, supervisors implement. Hooks enforce separation.
 
-**Worktree isolation** — Every task gets its own git worktree at `.worktrees/bd-{BEAD_ID}/`. Main stays clean. Multiple tasks can run in parallel without branch conflicts.
+🌳 **Worktree isolation** — Every task gets its own worktree. Main stays clean. Parallel work without conflicts.
 
-**Automatic task tracking** — The orchestrator creates and manages [beads](https://github.com/steveyegge/beads) automatically. You don't touch task management — it creates beads, tracks progress, marks completion, and closes them.
+📋 **Auto task tracking** — [Beads](https://github.com/steveyegge/beads) create, track, and close tasks automatically.
 
-**Epics with dependencies** — Cross-domain features (DB + API + Frontend) become epics with child tasks. Dependencies are enforced — hooks block dispatch of children whose dependencies haven't merged yet.
+🔗 **Epics & dependencies** — Cross-domain work becomes epics with enforced child dependencies.
 
-**Persistent knowledge base** — Agents capture conventions, gotchas, and patterns as they work via `bd comment` with `LEARNED:` and `INVESTIGATION:` prefixes. An async hook extracts these into `.beads/memory/knowledge.jsonl`. Supervisors are blocked from completing without a `LEARNED:` entry. Session start surfaces recent knowledge so agents don't re-investigate solved problems.
+🧠 **Knowledge base** — Agents capture conventions and gotchas into `.beads/memory/`. Enforced, searchable, surfaced at session start.
 
-**12 enforcement hooks** — Every step of the workflow is enforced. Orchestrator can't edit files. Supervisors can't start without a bead. Edits require a worktree. Completions are verified. Responses stay concise. See [Hooks](#hooks) for the full list.
+🔒 **12 enforcement hooks** — Every workflow step is guarded. See [Hooks](#hooks).
 
-**Tech stack discovery** — A discovery agent scans your codebase and creates the right supervisors (react-supervisor, python-supervisor, etc.) with best practices injected.
+🔎 **Tech stack discovery** — Scans your codebase, creates the right supervisors with best practices injected.
 
 ## How It Works
 
