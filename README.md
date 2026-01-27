@@ -7,7 +7,7 @@ Multi-agent orchestration for Claude Code. An orchestrator investigates issues, 
 ## Installation
 
 ```bash
-npx skills add AvivK5498/beads-orchestration
+npx skills add AvivK5498/Claude-Code-Beads-Orchestration
 ```
 
 Or via npm:
