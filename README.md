@@ -42,11 +42,13 @@ The skill walks you through setup, runs the bootstrap via `npx`, then creates te
 
 📋 **Auto task tracking** — [Beads](https://github.com/steveyegge/beads) create, track, and close tasks automatically.
 
-🔗 **Epics & dependencies** — Cross-domain work becomes epics with enforced child dependencies.
+🔗 **Epics & dependencies** — Cross-domain work becomes epics with enforced child dependencies. Independent children dispatch in parallel.
+
+🔁 **Follow-up traceability** — Closed beads stay closed. Bug fixes become new beads linked via `bd dep relate` — full history, no reopening.
 
 🧠 **Knowledge base** — Agents capture conventions and gotchas into `.beads/memory/`. Enforced, searchable, surfaced at session start.
 
-🔒 **12 enforcement hooks** — Every workflow step is guarded. See [Hooks](#hooks).
+🔒 **13 enforcement hooks** — Every workflow step is guarded. See [Hooks](#hooks).
 
 🔎 **Tech stack discovery** — Scans your codebase, creates the right supervisors with best practices injected.
 
@@ -104,12 +106,30 @@ An async hook intercepts these comments and extracts them into `.beads/memory/kn
 
 See [docs/memory-architecture.md](docs/memory-architecture.md) for the full design.
 
+## Bug Fixes & Follow-Up Work
+
+Closed beads are immutable. When a bug is found after a task was completed, a new bead is created and linked to the original:
+
+```bash
+bd create "Fix: button click handler race condition" -d "Follow-up to BD-001"
+# Returns: BD-005
+
+bd dep relate BD-005 BD-001   # Bidirectional "see also" — no dependency
+```
+
+The `relates_to` link gives full traceability without reopening anything. A PreToolUse hook enforces this — dispatching a supervisor to a closed or done bead is blocked automatically, with instructions to create a new bead instead.
+
+**Why this matters:**
+- Merged branches don't get reused — avoids SHA conflicts from squash/rebase merges
+- Each fix gets its own worktree, PR, and LEARNED comment
+- Audit trail stays clean — one bead = one unit of work
+
 ## What Gets Installed
 
 ```
 .claude/
 ├── agents/           # Supervisors (discovery creates tech-specific ones)
-├── hooks/            # Workflow enforcement (12 hooks)
+├── hooks/            # Workflow enforcement (13 hooks)
 ├── skills/           # subagents-discipline, react-best-practices
 └── settings.json
 CLAUDE.md             # Orchestrator instructions
@@ -120,7 +140,7 @@ CLAUDE.md             # Orchestrator instructions
 
 ## Hooks
 
-12 hooks enforce the workflow at every step. Grouped by lifecycle event:
+13 hooks enforce the workflow at every step. Grouped by lifecycle event:
 
 **PreToolUse** — Block before action happens:
 
@@ -129,9 +149,10 @@ CLAUDE.md             # Orchestrator instructions
 | `block-orchestrator-tools.sh` | Edit, Write | Orchestrator can't modify code directly |
 | `enforce-bead-for-supervisor.sh` | Task | Supervisors require BEAD_ID in prompt |
 | `enforce-branch-before-edit.sh` | Edit, Write | Must be in a worktree, not main |
-| `enforce-sequential-dispatch.sh` | Task | Blocks epic children with unresolved deps |
+| `enforce-sequential-dispatch.sh` | Task | Blocks closed/done beads and epic children with unresolved deps |
 | `validate-epic-close.sh` | Bash | Can't close epic with open children |
 | `inject-discipline-reminder.sh` | Task | Injects discipline skill context |
+| `inject-memory-recall.sh` | Task | Reminds supervisors to search knowledge base before implementing |
 | `remind-inprogress.sh` | Task | Warns about existing in-progress beads |
 
 **PostToolUse** — React after action completes:

@@ -100,6 +100,25 @@ bd epic status ID                                     # Epic completion status
 ```
 → WRONG. Cross-domain = Epic. No exceptions.
 
+## Bug Fixes & Follow-Up Work
+
+**Closed beads stay closed.** Never reopen or redispatch a closed/done bead.
+
+If a bug is found after a bead was completed, or follow-up work is needed:
+
+```bash
+# 1. Create a new bead
+bd create "Fix: [description]" -d "Follow-up to {OLD_ID}: [details]"
+# Returns: {NEW_ID}
+
+# 2. Relate it to the original (no dependency, just traceability)
+bd dep relate {NEW_ID} {OLD_ID}
+
+# 3. Investigate and dispatch as normal
+```
+
+The `relates_to` link provides full traceability without reopening anything. A PreToolUse hook enforces this — dispatching to a closed/done bead will be blocked.
+
 ## Worktree Workflow
 
 Supervisors work in isolated worktrees (`.worktrees/bd-{BEAD_ID}/`), not branches on main.
@@ -168,34 +187,23 @@ bd create "Create frontend" -d "..." --parent {EPIC_ID} --deps "{EPIC_ID}.2"
 # Returns: {EPIC_ID}.3
 ```
 
-#### 4. Dispatch Sequentially
+#### 4. Dispatch in Parallel
 
-Use `bd ready` to find unblocked tasks:
+Use `bd ready` to find all unblocked tasks and dispatch them simultaneously:
 
 ```bash
-bd ready --json | jq -r '.[] | select(.id | startswith("{EPIC_ID}.")) | .id' | head -1
+bd ready --json | jq -r '.[] | select(.id | startswith("{EPIC_ID}.")) | .id'
 ```
 
-Dispatch format for epic children:
+**Dispatch ALL ready children in a single message with multiple Task() calls:**
 ```
-Task(
-  subagent_type="{appropriate}-supervisor",
-  prompt="BEAD_ID: {CHILD_ID}
-EPIC_ID: {EPIC_ID}
-
-{task description with fix}"
-)
+Task(subagent_type="{tech}-supervisor", prompt="BEAD_ID: {EPIC_ID}.1\nEPIC_ID: {EPIC_ID}\n\n{task}")
+Task(subagent_type="{tech}-supervisor", prompt="BEAD_ID: {EPIC_ID}.2\nEPIC_ID: {EPIC_ID}\n\n{task}")
 ```
 
-**WAIT for each child to complete AND be merged before dispatching next.**
+When any child completes, run `bd ready` again to dispatch newly unblocked children. Repeat until all children are done.
 
-Each child:
-1. Creates its own worktree: `.worktrees/bd-{CHILD_ID}/`
-2. Implements the fix
-3. Pushes to remote
-4. Marks `inreview`
-
-User merges each child's PR before the next can start (dependencies enforce this).
+Each child works in its own isolated worktree (`.worktrees/bd-{CHILD_ID}/`). The dependency graph ensures children only become ready when their blockers are resolved. The PreToolUse hook enforces this — dispatching a blocked child will be denied.
 
 #### 5. Close Epic
 

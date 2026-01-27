@@ -12,7 +12,8 @@
           {"type": "command", "command": ".claude/hooks/enforce-bead-for-supervisor.sh"},
           {"type": "command", "command": ".claude/hooks/enforce-sequential-dispatch.sh"},
           {"type": "command", "command": ".claude/hooks/remind-inprogress.sh"},
-          {"type": "command", "command": ".claude/hooks/inject-discipline-reminder.sh"}
+          {"type": "command", "command": ".claude/hooks/inject-discipline-reminder.sh"},
+          {"type": "command", "command": ".claude/hooks/inject-memory-recall.sh"}
         ]
       },
       {

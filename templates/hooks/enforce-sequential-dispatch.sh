@@ -25,6 +25,15 @@ PROMPT=$(echo "$INPUT" | jq -r '.tool_input.prompt // empty')
 BEAD_ID=$(echo "$PROMPT" | grep -oE "BEAD_ID: [A-Za-z0-9._-]+" | head -1 | sed 's/BEAD_ID: //')
 [[ -z "$BEAD_ID" ]] && exit 0
 
+# Block dispatch to closed/done beads - create a new bead instead
+BEAD_STATUS=$(bd show "$BEAD_ID" --json 2>/dev/null | jq -r '.[0].status // empty')
+if [[ "$BEAD_STATUS" == "closed" || "$BEAD_STATUS" == "done" ]]; then
+  cat << EOF
+{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"<closed-bead>\nBead ${BEAD_ID} is already ${BEAD_STATUS}. Do not reopen closed beads.\n\nCreate a new bead for follow-up work and relate it:\n\n  bd create \"Fix: [description]\" -d \"Follow-up to ${BEAD_ID}: [details]\"\n  # Returns: {NEW_ID}\n  bd dep relate {NEW_ID} ${BEAD_ID}\n\nThen dispatch with the NEW bead ID.\n</closed-bead>"}}
+EOF
+  exit 0
+fi
+
 # Check if this is an epic child (contains dot)
 if [[ "$BEAD_ID" == *"."* ]]; then
   # Extract EPIC_ID (everything before last dot)
