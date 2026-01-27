@@ -1,6 +1,6 @@
 {
   "name": "@avivkaplan/beads-orchestration",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Multi-agent orchestration for Claude Code with automatic task management",
   "author": "Aviv Kaplan",
   "license": "MIT",
@@ -28,6 +28,7 @@
     "skills/",
     "templates/",
     "bootstrap.py",
+    "SKILL.md",
     "README.md"
   ],
   "bin": {

@@ -4,22 +4,19 @@ Multi-agent orchestration for Claude Code. An orchestrator investigates issues, 
 
 **[Beads Kanban UI](https://github.com/AvivK5498/Beads-Kanban-UI)** — Visual task management fully compatible with this workflow. Supports tasks, epics, subtasks, dependencies, and design docs.
 
-## Two Modes
-
-| Mode | Flag | Read-only Agents | Requirements |
-|------|------|------------------|--------------|
-| **Claude-only** | `--claude-only` | Run via Claude Task() | beads CLI only |
-| **External Providers** | (default) | Run via Codex/Gemini | Codex CLI, Gemini CLI, uv |
-
 ## Installation
+
+```bash
+npx skills add AvivK5498/beads-orchestration
+```
+
+Or via npm:
 
 ```bash
 npm install -g @avivkaplan/beads-orchestration
 ```
 
-This installs the `create-beads-orchestration` skill to `~/.claude/skills/`.
-
-> **Note:** macOS and Linux only.
+> macOS and Linux only.
 
 ## Quick Start
 
@@ -28,18 +25,14 @@ This installs the `create-beads-orchestration` skill to `~/.claude/skills/`.
 /create-beads-orchestration
 ```
 
-The skill walks you through setup, then creates tech-specific supervisors based on your codebase.
+The skill walks you through setup, runs the bootstrap via `npx`, then creates tech-specific supervisors based on your codebase.
 
 ### Requirements
 
-**Claude-only mode:**
 - Claude Code with hooks support
-- beads CLI: `brew install steveyegge/beads/bd` or `npm install -g @beads/bd`
-
-**External Providers mode (additional):**
-- Codex CLI: `codex login`
-- Gemini CLI (optional fallback)
-- uv: [install](https://github.com/astral-sh/uv)
+- Node.js (for npx)
+- Python 3 (for bootstrap)
+- beads CLI (installed automatically by bootstrap)
 
 ## How It Works
 
@@ -115,6 +108,35 @@ When a feature spans multiple supervisors (e.g., DB + API + Frontend), the orche
 
 You can also explicitly request an epic: *"Add user profiles and create an epic for it."*
 
+## Knowledge Base
+
+Agents build a persistent knowledge base as they work. No extra steps — it piggybacks on `bd comment`.
+
+```bash
+# Supervisor finishes a task and records what it learned
+bd comment BD-001 "LEARNED: TaskGroup requires @Sendable closures in strict concurrency mode."
+
+# Orchestrator logs investigation findings
+bd comment BD-002 "INVESTIGATION: Root cause: SparkleAdapter.swift:45 - nil SUFeedURL crashes XMLParser."
+```
+
+An async hook intercepts these comments and extracts them into `.beads/memory/knowledge.jsonl`. Each entry is auto-tagged by keyword and attributed to its source (orchestrator vs supervisor).
+
+**Why this works:**
+- Zero friction — agents already use `bd comment`, they just add a prefix
+- No database, no embeddings, no external services — one JSONL file, grep + jq to search
+- Enforced — supervisors are blocked from completing without a `LEARNED:` comment
+- Surfaces automatically — session start shows recent knowledge so agents don't re-investigate solved problems
+
+```bash
+# Search the knowledge base
+.beads/memory/recall.sh "concurrency"
+.beads/memory/recall.sh --recent 10
+.beads/memory/recall.sh --stats
+```
+
+See [docs/memory-architecture.md](docs/memory-architecture.md) for the full design.
+
 ## What Gets Installed
 
 ```
@@ -125,7 +147,7 @@ You can also explicitly request an epic: *"Add user profiles and create an epic 
 └── settings.json
 CLAUDE.md             # Orchestrator instructions
 .beads/               # Task database
-.mcp.json             # Provider delegator config (External Providers mode)
+  memory/             # Knowledge base (knowledge.jsonl + recall.sh)
 .worktrees/           # Isolated worktrees for each task (created dynamically)
 ```
 
@@ -143,7 +165,23 @@ CLAUDE.md             # Orchestrator instructions
 | `validate-completion.sh` | Verifies worktree, push, bead status |
 | `enforce-concise-response.sh` | Limits response verbosity |
 | `clarify-vague-request.sh` | Prompts for clarification |
-| `session-start.sh` | Shows task status, cleanup suggestions, open PRs |
+| `memory-capture.sh` | Extracts LEARNED/INVESTIGATION into knowledge base |
+| `session-start.sh` | Shows task status, knowledge, cleanup suggestions |
+
+## Advanced: External Providers
+
+By default, all agents run via Claude's Task(). If you want to delegate read-only agents (scout, detective, etc.) to Codex/Gemini instead:
+
+```bash
+/create-beads-orchestration --external-providers
+```
+
+**Additional requirements:**
+- Codex CLI: `codex login`
+- Gemini CLI (optional fallback)
+- uv: [install](https://github.com/astral-sh/uv)
+
+This creates `.mcp.json` with provider-delegator config.
 
 ## License
 
