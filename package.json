@@ -1,6 +1,6 @@
 {
   "name": "beads-orchestration",
-  "version": "2.0.0",
+  "version": "2.2.0",
   "description": "Multi-agent orchestration for Claude Code with automatic task management",
   "author": "Aviv Kaplan",
   "license": "MIT",

@@ -30,17 +30,74 @@ fi
 [[ "$IS_SUBAGENT" == "true" ]] && exit 0
 
 # Allow Plan mode — orchestrator can write to ~/.claude/plans/
+# Allow CLAUDE.md — orchestrator maintains project documentation
 if [[ "$TOOL_NAME" == "Edit" ]] || [[ "$TOOL_NAME" == "Write" ]]; then
   FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
   if [[ "$FILE_PATH" == *"/.claude/plans/"* ]]; then
     exit 0
   fi
+  # Allow CLAUDE.md updates (project documentation is orchestrator responsibility)
+  if [[ "$(basename "$FILE_PATH")" == "CLAUDE.md" ]] || [[ "$(basename "$FILE_PATH")" == "CLAUDE.local.md" ]]; then
+    exit 0
+  fi
+  # Allow git-issues.md updates (issue tracking is orchestrator responsibility)
+  if [[ "$(basename "$FILE_PATH")" == "git-issues.md" ]]; then
+    exit 0
+  fi
+  # Allow memory files (orchestrator maintains persistent learnings)
+  if [[ "$FILE_PATH" == *"/.claude/"*"/memory/"* ]] || [[ "$FILE_PATH" == *"/.claude/memory/"* ]]; then
+    exit 0
+  fi
 fi
 
-# DENYLIST: Block implementation tools for orchestrator
-BLOCKED="Edit|Write|NotebookEdit"
+# QUICK-FIX ESCAPE HATCH with branch enforcement
+# Orchestrators can make small edits on feature branches with user approval
+# But NEVER on main/master - must use full bead + worktree workflow
+if [[ "$TOOL_NAME" == "Edit" ]] || [[ "$TOOL_NAME" == "Write" ]]; then
+  FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
+  FILE_NAME=$(basename "$FILE_PATH")
 
-if [[ "$TOOL_NAME" =~ ^($BLOCKED)$ ]]; then
+  # Check if editing within a worktree (always allowed for orchestrator)
+  if [[ "$FILE_PATH" == *"/.worktrees/"* ]]; then
+    exit 0
+  fi
+
+  # Check current branch
+  CURRENT_BRANCH=$(git branch --show-current 2>/dev/null)
+
+  # On main/master → hard deny, guide to alternatives
+  if [[ "$CURRENT_BRANCH" == "main" ]] || [[ "$CURRENT_BRANCH" == "master" ]]; then
+    cat << EOF
+{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Cannot edit files on $CURRENT_BRANCH branch.\n\nFor quick fixes (<10 lines):\n  git checkout -b quick-fix-description\n  Then retry the edit (you'll be prompted for approval)\n\nFor larger changes:\n  Use the full bead workflow with supervisors."}}
+EOF
+    exit 0
+  fi
+
+  # On feature branch → ask for quick-fix approval
+  # Estimate change size for Edit tool
+  if [[ "$TOOL_NAME" == "Edit" ]]; then
+    OLD_STRING=$(echo "$INPUT" | jq -r '.tool_input.old_string // empty')
+    NEW_STRING=$(echo "$INPUT" | jq -r '.tool_input.new_string // empty')
+    OLD_LINES=$(echo "$OLD_STRING" | wc -l | tr -d ' ')
+    NEW_LINES=$(echo "$NEW_STRING" | wc -l | tr -d ' ')
+    OLD_CHARS=${#OLD_STRING}
+    NEW_CHARS=${#NEW_STRING}
+    SIZE_INFO="~${NEW_LINES} lines (${OLD_CHARS} → ${NEW_CHARS} chars)"
+  else
+    # Write tool - estimate from content
+    CONTENT=$(echo "$INPUT" | jq -r '.tool_input.content // empty')
+    CONTENT_LINES=$(echo "$CONTENT" | wc -l | tr -d ' ')
+    SIZE_INFO="~${CONTENT_LINES} lines (new file)"
+  fi
+
+  cat << EOF
+{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"Quick fix on branch '$CURRENT_BRANCH'?\n  File: $FILE_NAME\n  Change: $SIZE_INFO\n\nApprove for trivial changes (<10 lines).\nDeny to use full bead workflow instead."}}
+EOF
+  exit 0
+fi
+
+# Block NotebookEdit (no quick-fix escape for notebooks)
+if [[ "$TOOL_NAME" == "NotebookEdit" ]]; then
   cat << EOF
 {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Tool '$TOOL_NAME' blocked. Orchestrators investigate and delegate via Task(). Supervisors implement."}}
 EOF
@@ -72,10 +129,18 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
       status|log|diff|branch|checkout|merge|fetch|remote|stash|show)
         exit 0
         ;;
-      add|commit)
-        cat << EOF
-{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Git '$SECOND_WORD' blocked for orchestrator. Supervisors handle commits."}}
+      add)
+        # Allow git add for quick-fix flow
+        exit 0
+        ;;
+      commit)
+        # Block --no-verify to ensure pre-commit hooks run
+        if [[ "$COMMAND" == *"--no-verify"* ]] || [[ "$COMMAND" == *"-n"* ]]; then
+          cat << EOF
+{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"git commit --no-verify is blocked.\n\nPre-commit hooks exist for a reason (type-check, lint, tests).\nRun the commit without --no-verify and fix any issues."}}
 EOF
+          exit 0
+        fi
         exit 0
         ;;
     esac

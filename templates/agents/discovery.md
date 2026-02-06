@@ -393,13 +393,21 @@ For each specialist:
 
 ## Step 5: Update CLAUDE.md
 
-After creating supervisors, update the `## Supervisors` section in `.claude/CLAUDE.md`:
+After creating supervisors, update CLAUDE.md with detected information:
 
-```bash
-# Replace the Supervisors section with actual list
+### 5.1 Update Tech Stack section
+
+```markdown
+## Tech Stack
+
+- **Languages**: TypeScript, Python
+- **Frontend**: React 18, Next.js 14, Tailwind CSS
+- **Backend**: FastAPI, PostgreSQL
+- **Infrastructure**: Docker, Vercel
 ```
 
-Format (keep it minimal - just names):
+### 5.2 Update Supervisors section
+
 ```markdown
 ## Supervisors
 
@@ -408,7 +416,7 @@ Format (keep it minimal - just names):
 - infra-supervisor
 ```
 
-No descriptions, no personas, no extra text. Just the list.
+Keep both sections minimal — just the facts, no descriptions.
 
 ---
 

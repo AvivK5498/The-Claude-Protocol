@@ -69,6 +69,13 @@
           {"type": "command", "command": ".claude/hooks/clarify-vague-request.sh"}
         ]
       }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {"type": "command", "command": ".claude/hooks/nudge-claude-md-update.sh"}
+        ]
+      }
     ]
   }
 }

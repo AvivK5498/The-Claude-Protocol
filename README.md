@@ -75,7 +75,9 @@ The complexity is in the system. What you see: Claude plans with you, you approv
 
 **Epics** — Cross-domain work (DB + API + frontend) becomes an epic with enforced child dependencies. Each child gets its own worktree. Dependencies prevent dispatching out of order.
 
-Every task goes through beads. No exceptions.
+**Quick Fix** — For trivial changes (<10 lines), the orchestrator can edit directly on a feature branch. The hook prompts the user for approval with file name and change size. Hard blocked on main — must use bead workflow there.
+
+Every task goes through beads — unless the user explicitly approves a quick fix.
 
 ### Kanban UI
 
@@ -116,7 +118,11 @@ The skill walks you through setup, scans your tech stack, and creates supervisor
 
 ### Enforcement, Not Suggestions
 
-13 hooks across 5 lifecycle events. They don't warn — they block. The orchestrator can't edit code. Supervisors can't skip beads. Epics can't close with open children. PRs must be merged before a bead is closed.
+13 hooks across 5 lifecycle events. They don't warn — they block. The orchestrator can't edit code on main. Supervisors can't skip beads. Epics can't close with open children. `git commit --no-verify` is blocked — pre-commit hooks always run.
+
+### Investigation-First, Constraint-Driven
+
+The orchestrator must read the actual source file before delegating — no guessing. Constraints ("never dispatch without reading the source") outperform instructions ("remember to investigate"), inspired by [Cursor's multi-agent research](https://cursor.com/blog/self-driving-codebases). The orchestrator also maintains persistent memory across sessions.
 
 ### Documentation That Writes Itself
 
@@ -156,7 +162,7 @@ CLAUDE.md             # Orchestrator instructions
 
 13 hooks enforce every workflow step. They block before bad actions happen, auto-log after good ones, and validate before supervisors exit.
 
-**PreToolUse** (7 hooks) — Block orchestrator from writing code. Require beads for supervisor dispatch. Enforce worktree isolation. Block closing epics with open children. Enforce sequential dependency dispatch.
+**PreToolUse** (7 hooks) — Block orchestrator from writing code on main. Prompt for quick-fix approval on feature branches. Block `--no-verify` on commits. Allow memory file writes. Require beads for supervisor dispatch. Enforce worktree isolation. Block closing epics with open children. Enforce sequential dependency dispatch.
 
 **PostToolUse** (3 hooks) — Auto-log dispatch prompts as bead comments. Capture knowledge base entries. Enforce concise supervisor responses.
 
