@@ -795,26 +795,36 @@ def create_mcp_config(project_dir: Path, venv_python: Path) -> None:
 # VERIFICATION
 # ============================================================================
 
-def verify_installation(project_dir: Path, claude_only: bool = False, with_mux: bool = False) -> bool:
+def verify_installation(project_dir: Path, claude_only: bool = False, with_mux: bool = False, mux_only: bool = False) -> bool:
     """Verify all components were installed correctly."""
-    checks = {
-        ".claude/hooks": "Hooks directory",
-        ".claude/agents": "Agents directory",
-        ".claude/settings.json": "Settings file",
-        ".beads": "Beads directory",
-        "CLAUDE.md": "CLAUDE.md",
-        ".gitignore": ".gitignore",
-    }
+    if mux_only:
+        checks = {
+            ".beads": "Beads directory",
+            ".gitignore": ".gitignore",
+            ".mux/AGENTS.md": "Mux workspace AGENTS.md",
+            ".mux/init": "Mux init hook",
+            ".mux/tool_post": "Mux tool_post hook",
+            ".mux/tool_env": "Mux tool_env hook",
+        }
+    else:
+        checks = {
+            ".claude/hooks": "Hooks directory",
+            ".claude/agents": "Agents directory",
+            ".claude/settings.json": "Settings file",
+            ".beads": "Beads directory",
+            "CLAUDE.md": "CLAUDE.md",
+            ".gitignore": ".gitignore",
+        }
 
-    if with_mux:
-        checks[".mux/AGENTS.md"] = "Mux workspace AGENTS.md"
-        checks[".mux/init"] = "Mux init hook"
-        checks[".mux/tool_post"] = "Mux tool_post hook"
-        checks[".mux/tool_env"] = "Mux tool_env hook"
+        if with_mux:
+            checks[".mux/AGENTS.md"] = "Mux workspace AGENTS.md"
+            checks[".mux/init"] = "Mux init hook"
+            checks[".mux/tool_post"] = "Mux tool_post hook"
+            checks[".mux/tool_env"] = "Mux tool_env hook"
 
-    # Only check for .mcp.json in external providers mode
-    if not claude_only:
-        checks[".mcp.json"] = "MCP config"
+        # Only check for .mcp.json in external providers mode
+        if not claude_only:
+            checks[".mcp.json"] = "MCP config"
 
     print("\n=== Verification ===")
     all_good = True
@@ -828,21 +838,22 @@ def verify_installation(project_dir: Path, claude_only: bool = False, with_mux: 
             all_good = False
 
     # Count files
-    hooks_dir = project_dir / ".claude/hooks"
-    if hooks_dir.exists():
-        hook_count = len(list(hooks_dir.glob("*.sh")))
-        print(f"  - Hooks: {hook_count}")
+    if not mux_only:
+        hooks_dir = project_dir / ".claude/hooks"
+        if hooks_dir.exists():
+            hook_count = len(list(hooks_dir.glob("*.sh")))
+            print(f"  - Hooks: {hook_count}")
 
-    agents_dir = project_dir / ".claude/agents"
-    if agents_dir.exists():
-        agent_count = len(list(agents_dir.glob("*.md")))
-        print(f"  - Agents: {agent_count}")
+        agents_dir = project_dir / ".claude/agents"
+        if agents_dir.exists():
+            agent_count = len(list(agents_dir.glob("*.md")))
+            print(f"  - Agents: {agent_count}")
 
-    skills_dir = project_dir / ".claude/skills"
-    if skills_dir.exists():
-        skill_count = len(list(skills_dir.iterdir()))
-        if skill_count > 0:
-            print(f"  - Skills: {skill_count}")
+        skills_dir = project_dir / ".claude/skills"
+        if skills_dir.exists():
+            skill_count = len(list(skills_dir.iterdir()))
+            if skill_count > 0:
+                print(f"  - Skills: {skill_count}")
 
     return all_good
 
@@ -862,7 +873,7 @@ def main():
     parser.add_argument("--with-kanban-ui", action="store_true",
                         help="Use Beads Kanban UI API for worktree creation (with git fallback)")
     parser.add_argument("--with-mux", action="store_true",
-                        help="Install Mux workspace files (.mux/AGENTS.md, .mux/init, .mux/tool_post, .mux/tool_env)")
+                        help="Mux-only mode: install .mux files and skip all .claude installation")
     args = parser.parse_args()
 
     project_dir = Path(args.project_dir).resolve()
@@ -897,6 +908,49 @@ def main():
         sys.exit(1)
 
     venv_python = None
+
+    # In mux-only mode, install only beads + .mux integration and skip all .claude files.
+    mux_only = with_mux
+
+    if mux_only:
+        print("\n[MUX-ONLY] Skipping .claude orchestration installation")
+
+        if not install_beads(project_dir, claude_only=True):
+            print("\nERROR: Beads CLI is required. Aborting bootstrap.")
+            sys.exit(1)
+
+        copy_mux_workspace_files(project_dir, project_name)
+        setup_gitignore(project_dir, claude_only=True, with_mux=True)
+
+        if not verify_installation(project_dir, claude_only=True, with_mux=True, mux_only=True):
+            print("\nWARNING: Installation incomplete - check errors above")
+
+        run_mux_init_if_present(project_dir, True)
+
+        print("\n" + "=" * 60)
+        print("BOOTSTRAP COMPLETE")
+        print("=" * 60)
+        print(f"""
+Mode: MUX-ONLY
+
+Installed:
+- .beads (task tracking)
+- .mux/AGENTS.md
+- .mux/init
+- .mux/tool_post
+- .mux/tool_env
+
+Skipped intentionally:
+- .claude/agents
+- .claude/hooks
+- .claude/settings.json
+- CLAUDE.md
+
+Next steps:
+1. Restart your Mux workspace session
+2. Continue working with Mux + beads workflow
+""")
+        return
 
     # Step 0: Setup bundled provider-delegator (skip in claude-only mode)
     if not claude_only:

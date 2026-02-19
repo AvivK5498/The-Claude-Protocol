@@ -114,7 +114,7 @@ Then in any Claude Code session:
 /create-beads-orchestration
 ```
 
-For Mux-oriented projects, pass `--with-mux` in the bootstrap command prompted by the skill (or run `beads-orchestration bootstrap --with-mux`) to install `.mux/*` workspace files.
+For Mux-oriented projects, pass `--with-mux` in the bootstrap command prompted by the skill (or run `beads-orchestration bootstrap --with-mux`) to use **Mux-only mode** (`.mux/*` + `.beads`, no `.claude/*`).
 
 The skill walks you through setup, scans your tech stack, and creates supervisors with best practices injected.
 
@@ -168,7 +168,7 @@ CLAUDE.md             # Orchestrator instructions
   memory/             # Knowledge base (knowledge.jsonl + recall.sh)
 .worktrees/           # Isolated worktrees per task (created dynamically)
 
-# Optional with --with-mux
+# With --with-mux (Mux-only mode)
 .mux/
 ├── AGENTS.md         # Mux workspace instruction layer
 ├── init              # Workspace init hook (bd prime --stealth)
@@ -202,7 +202,7 @@ Use bootstrap with Mux files:
 beads-orchestration bootstrap --project-dir . --with-mux
 ```
 
-This installs `.mux/AGENTS.md`, `.mux/init`, `.mux/tool_post`, and `.mux/tool_env` in addition to the standard Claude/beads setup.
+This installs only Mux + beads files (`.mux/*` and `.beads`) and intentionally skips all `.claude/*` installation.
 
 ## Advanced: External Providers
 
