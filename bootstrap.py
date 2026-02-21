@@ -366,13 +366,13 @@ def setup_memory(project_dir: Path) -> None:
         print("  - Created .beads/memory/knowledge.jsonl")
 
     # Copy recall script (Node.js version for cross-platform support)
-    recall_src = TEMPLATES_DIR / "hooks" / "recall.js"
-    recall_dest = memory_dir / "recall.js"
+    recall_src = TEMPLATES_DIR / "hooks" / "recall.cjs"
+    recall_dest = memory_dir / "recall.cjs"
     if recall_src.exists():
         shutil.copy2(recall_src, recall_dest)
-        print("  - Copied .beads/memory/recall.js")
+        print("  - Copied .beads/memory/recall.cjs")
     else:
-        print("  - WARNING: recall.js template not found")
+        print("  - WARNING: recall.cjs template not found")
 
 
 # ============================================================================
@@ -567,7 +567,7 @@ def copy_hooks(project_dir: Path, claude_only: bool = False) -> list:
     # Hooks to skip in claude-only mode (none currently - all hooks apply to both modes)
     skip_in_claude_only = set()
 
-    for hook_file in hooks_template_dir.glob("*.js"):
+    for hook_file in hooks_template_dir.glob("*.cjs"):
         # Skip provider enforcement hooks in claude-only mode
         if claude_only and hook_file.name in skip_in_claude_only:
             print(f"  - Skipped {hook_file.name} (claude-only mode)")
@@ -758,7 +758,7 @@ def verify_installation(project_dir: Path, claude_only: bool = False) -> bool:
     # Count files
     hooks_dir = project_dir / ".claude/hooks"
     if hooks_dir.exists():
-        hook_count = len(list(hooks_dir.glob("*.js")))
+        hook_count = len(list(hooks_dir.glob("*.cjs")))
         print(f"  - Hooks: {hook_count}")
 
     agents_dir = project_dir / ".claude/agents"

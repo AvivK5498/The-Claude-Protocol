@@ -3,7 +3,7 @@
 
 // PreToolUse:Bash — Validate bead close: PR must be merged, epic children must be complete
 
-const { readStdinJSON, getField, deny, execCommand, execCommandJSON, runHook } = require('./hook-utils');
+const { readStdinJSON, getField, deny, execCommand, execCommandJSON, runHook } = require('./hook-utils.cjs');
 
 runHook('validate-epic-close', () => {
 // This hook reads from CLAUDE_TOOL_INPUT env var (not stdin for the command check)

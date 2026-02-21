@@ -5,7 +5,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { readStdinJSON, getField, getProjectDir, runHook } = require('./hook-utils');
+const { readStdinJSON, getField, getProjectDir, runHook } = require('./hook-utils.cjs');
 
 runHook('memory-capture', () => {
 const input = readStdinJSON();

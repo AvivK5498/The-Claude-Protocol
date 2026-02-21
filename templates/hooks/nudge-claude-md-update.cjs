@@ -5,7 +5,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { getRepoRoot, injectText, runHook } = require('./hook-utils');
+const { getRepoRoot, injectText, runHook } = require('./hook-utils.cjs');
 
 runHook('nudge-claude-md-update', () => {
 const repoRoot = getRepoRoot();

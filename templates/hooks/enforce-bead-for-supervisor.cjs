@@ -3,7 +3,7 @@
 
 // PreToolUse:Task — Enforce bead exists before supervisor dispatch
 
-const { readStdinJSON, getField, deny, runHook } = require('./hook-utils');
+const { readStdinJSON, getField, deny, runHook } = require('./hook-utils.cjs');
 
 runHook('enforce-bead-for-supervisor', () => {
   const input = readStdinJSON();

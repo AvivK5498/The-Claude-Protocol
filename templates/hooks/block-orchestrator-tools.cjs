@@ -9,7 +9,7 @@ const path = require('path');
 const {
   readStdinJSON, getField, deny, ask,
   getCurrentBranch, containsPathSegment, runHook,
-} = require('./hook-utils');
+} = require('./hook-utils.cjs');
 
 runHook('block-orchestrator-tools', () => {
 const input = readStdinJSON();

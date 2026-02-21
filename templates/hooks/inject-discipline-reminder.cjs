@@ -3,7 +3,7 @@
 
 // PreToolUse: Inject discipline skill reminder for supervisor dispatches
 
-const { readStdinJSON, getField, injectText, runHook } = require('./hook-utils');
+const { readStdinJSON, getField, injectText, runHook } = require('./hook-utils.cjs');
 
 runHook('inject-discipline-reminder', () => {
   const input = readStdinJSON();

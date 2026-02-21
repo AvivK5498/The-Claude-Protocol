@@ -3,7 +3,7 @@
 
 // PreToolUse: Block Edit/Write on main branch outside worktrees
 
-const { readStdinJSON, getField, deny, getCurrentBranch, containsPathSegment, runHook } = require('./hook-utils');
+const { readStdinJSON, getField, deny, getCurrentBranch, containsPathSegment, runHook } = require('./hook-utils.cjs');
 
 runHook('enforce-branch-before-edit', () => {
 const input = readStdinJSON();

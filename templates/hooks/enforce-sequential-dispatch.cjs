@@ -7,7 +7,7 @@ const fs = require('fs');
 const {
   readStdinJSON, getField, deny, parseBeadId,
   execCommand, execCommandJSON, runHook,
-} = require('./hook-utils');
+} = require('./hook-utils.cjs');
 
 runHook('enforce-sequential-dispatch', () => {
 const input = readStdinJSON();

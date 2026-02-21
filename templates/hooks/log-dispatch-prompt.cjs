@@ -3,7 +3,7 @@
 
 // PostToolUse:Task (async) — Auto-log dispatch prompts to bead comments
 
-const { readStdinJSON, getField, parseBeadId, execCommand, runHook } = require('./hook-utils');
+const { readStdinJSON, getField, parseBeadId, execCommand, runHook } = require('./hook-utils.cjs');
 
 runHook('log-dispatch-prompt', () => {
 const input = readStdinJSON();

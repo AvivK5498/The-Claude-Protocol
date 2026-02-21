@@ -5,7 +5,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { injectText, execCommand, getProjectDir, runHook } = require('./hook-utils');
+const { injectText, execCommand, getProjectDir, runHook } = require('./hook-utils.cjs');
 
 runHook('session-start', () => {
 const projectDir = getProjectDir();
@@ -161,7 +161,7 @@ try {
         output.push(`  [${typeLabel}] ${snippet}  (${e.source})`);
       }
       output.push('');
-      output.push('  Search: .beads/memory/recall.sh "keyword"');
+      output.push('  Search: node .beads/memory/recall.cjs "keyword"');
     }
   }
 } catch {

@@ -228,7 +228,7 @@ function logError(hookName, err) {
  * (fail open — hook error should not block the user).
  *
  * Usage in each hook file:
- *   const { runHook } = require('./hook-utils');
+ *   const { runHook } = require('./hook-utils.cjs');
  *   runHook('hook-name', () => { ... });
  */
 function runHook(hookName, fn) {

@@ -3,7 +3,7 @@
 
 // PostToolUse: Enforce concise responses from subagents
 
-const { readStdinJSON, getField, runHook } = require('./hook-utils');
+const { readStdinJSON, getField, runHook } = require('./hook-utils.cjs');
 
 runHook('enforce-concise-response', () => {
 const input = readStdinJSON();

@@ -3,7 +3,7 @@
 
 // UserPromptSubmit: Force clarification on vague requests + epic reminder
 
-const { readStdinJSON, getField, injectText, runHook } = require('./hook-utils');
+const { readStdinJSON, getField, injectText, runHook } = require('./hook-utils.cjs');
 
 runHook('clarify-vague-request', () => {
   const input = readStdinJSON();

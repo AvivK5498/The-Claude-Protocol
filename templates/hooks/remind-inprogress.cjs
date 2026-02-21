@@ -3,7 +3,7 @@
 
 // PreToolUse:Task — Soft reminder to set bead status before dispatch
 
-const { readStdinJSON, getField, injectText, runHook } = require('./hook-utils');
+const { readStdinJSON, getField, injectText, runHook } = require('./hook-utils.cjs');
 
 runHook('remind-inprogress', () => {
   const input = readStdinJSON();

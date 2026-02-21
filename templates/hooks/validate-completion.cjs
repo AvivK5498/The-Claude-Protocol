@@ -8,7 +8,7 @@ const path = require('path');
 const {
   readStdinJSON, getField, approve, block,
   execCommand, execCommandJSON, getRepoRoot, runHook,
-} = require('./hook-utils');
+} = require('./hook-utils.cjs');
 
 runHook('validate-completion', () => {
 const input = readStdinJSON();
