@@ -16,10 +16,6 @@
     "task-management",
     "beads"
   ],
-  "os": [
-    "darwin",
-    "linux"
-  ],
   "scripts": {
     "postinstall": "node scripts/postinstall.js"
   },

@@ -28,6 +28,10 @@ try:
 except ImportError:
     tomllib = None
 from pathlib import Path
+
+# On Windows, npm/pip install CLI tools as .cmd wrappers.
+# subprocess.run(["bd", ...]) can't find .cmd files without shell=True.
+_SHELL = sys.platform == "win32"
 from datetime import datetime
 import random
 
@@ -185,7 +189,8 @@ def setup_provider_delegator() -> Path:
         ["uv", "venv", str(venv_dir)],
         cwd=SHARED_MCP_DIR,
         capture_output=True,
-        text=True
+        text=True,
+        shell=_SHELL
     )
     if result.returncode != 0:
         print(f"  ERROR: Failed to create venv: {result.stderr}")
@@ -198,7 +203,8 @@ def setup_provider_delegator() -> Path:
         cwd=SHARED_MCP_DIR,
         capture_output=True,
         text=True,
-        env={**os.environ, "VIRTUAL_ENV": str(venv_dir)}
+        env={**os.environ, "VIRTUAL_ENV": str(venv_dir)},
+        shell=_SHELL
     )
     if result.returncode != 0:
         print(f"  ERROR: Failed to install dependencies: {result.stderr}")
@@ -234,7 +240,8 @@ def install_beads(project_dir: Path, claude_only: bool = False) -> bool:
             result = subprocess.run(
                 ["brew", "install", "steveyegge/beads/bd"],
                 capture_output=True,
-                text=True
+                text=True,
+                shell=_SHELL
             )
             if result.returncode == 0:
                 installed = True
@@ -246,7 +253,8 @@ def install_beads(project_dir: Path, claude_only: bool = False) -> bool:
             result = subprocess.run(
                 ["npm", "install", "-g", "@beads/bd"],
                 capture_output=True,
-                text=True
+                text=True,
+                shell=_SHELL
             )
             if result.returncode == 0:
                 installed = True
@@ -270,7 +278,8 @@ def install_beads(project_dir: Path, claude_only: bool = False) -> bool:
             result = subprocess.run(
                 ["go", "install", "github.com/steveyegge/beads/cmd/bd@latest"],
                 capture_output=True,
-                text=True
+                text=True,
+                shell=_SHELL
             )
             if result.returncode == 0:
                 installed = True
@@ -300,7 +309,8 @@ def install_beads(project_dir: Path, claude_only: bool = False) -> bool:
                 ["bd", "init"],
                 cwd=project_dir,
                 capture_output=True,
-                text=True
+                text=True,
+                shell=_SHELL
             )
             if result.returncode == 0:
                 print("  - Initialized via 'bd init'")
@@ -319,7 +329,8 @@ def install_beads(project_dir: Path, claude_only: bool = False) -> bool:
             ["bd", "config", "set", "status.custom", "inreview"],
             cwd=project_dir,
             capture_output=True,
-            text=True
+            text=True,
+            shell=_SHELL
         )
         if result.returncode == 0:
             print("  - Added 'inreview' custom status")
@@ -354,15 +365,14 @@ def setup_memory(project_dir: Path) -> None:
         knowledge_file.touch()
         print("  - Created .beads/memory/knowledge.jsonl")
 
-    # Copy recall script
-    recall_src = TEMPLATES_DIR / "memory" / "recall.sh"
-    recall_dest = memory_dir / "recall.sh"
+    # Copy recall script (Node.js version for cross-platform support)
+    recall_src = TEMPLATES_DIR / "hooks" / "recall.cjs"
+    recall_dest = memory_dir / "recall.cjs"
     if recall_src.exists():
         shutil.copy2(recall_src, recall_dest)
-        recall_dest.chmod(recall_dest.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
-        print("  - Copied .beads/memory/recall.sh")
+        print("  - Copied .beads/memory/recall.cjs")
     else:
-        print("  - WARNING: recall.sh template not found")
+        print("  - WARNING: recall.cjs template not found")
 
 
 # ============================================================================
@@ -557,7 +567,7 @@ def copy_hooks(project_dir: Path, claude_only: bool = False) -> list:
     # Hooks to skip in claude-only mode (none currently - all hooks apply to both modes)
     skip_in_claude_only = set()
 
-    for hook_file in hooks_template_dir.glob("*.sh"):
+    for hook_file in hooks_template_dir.glob("*.cjs"):
         # Skip provider enforcement hooks in claude-only mode
         if claude_only and hook_file.name in skip_in_claude_only:
             print(f"  - Skipped {hook_file.name} (claude-only mode)")
@@ -565,7 +575,6 @@ def copy_hooks(project_dir: Path, claude_only: bool = False) -> list:
 
         dest = hooks_dir / hook_file.name
         shutil.copy2(hook_file, dest)
-        dest.chmod(dest.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
         copied.append(hook_file.name)
         print(f"  - Copied {hook_file.name}")
 
@@ -749,7 +758,7 @@ def verify_installation(project_dir: Path, claude_only: bool = False) -> bool:
     # Count files
     hooks_dir = project_dir / ".claude/hooks"
     if hooks_dir.exists():
-        hook_count = len(list(hooks_dir.glob("*.sh")))
+        hook_count = len(list(hooks_dir.glob("*.cjs")))
         print(f"  - Hooks: {hook_count}")
 
     agents_dir = project_dir / ".claude/agents"

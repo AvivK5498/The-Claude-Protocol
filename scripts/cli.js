@@ -38,7 +38,8 @@ function runInstall() {
 function runBootstrap() {
   const bootstrapArgs = args.slice(1).join(' ');
   try {
-    execSync(`python3 "${bootstrapScript}" ${bootstrapArgs}`, { stdio: 'inherit' });
+    const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+    execSync(`${pythonCmd} "${bootstrapScript}" ${bootstrapArgs}`, { stdio: 'inherit' });
   } catch (err) {
     process.exit(err.status || 1);
   }

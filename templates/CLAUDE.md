@@ -137,7 +137,7 @@ bd dep relate {NEW_ID} {OLD_ID}  # Traceability link
 
 ## Knowledge Base
 
-Search before investigating unfamiliar code: `.beads/memory/recall.sh "keyword"`
+Search before investigating unfamiliar code: `node .beads/memory/recall.cjs "keyword"`
 
 Log learnings: `bd comment {ID} "LEARNED: [insight]"` — captured automatically to `.beads/memory/knowledge.jsonl`
 
