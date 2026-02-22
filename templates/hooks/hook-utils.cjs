@@ -11,6 +11,9 @@ const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
+// Module-level permission mode — set by readStdinJSON(), read by deny()/ask()
+let _permissionMode = '';
+
 // ---------------------------------------------------------------------------
 // Stdin
 // ---------------------------------------------------------------------------
@@ -22,7 +25,9 @@ const path = require('path');
 function readStdinJSON() {
   try {
     const raw = fs.readFileSync(0, 'utf8');
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    _permissionMode = parsed.permission_mode || '';
+    return parsed;
   } catch {
     return {};
   }
@@ -51,6 +56,11 @@ function getField(obj, dotPath) {
 // ---------------------------------------------------------------------------
 
 function deny(reason) {
+  // In bypass mode (--dangerously-skip-permissions), convert deny to warning
+  if (_permissionMode === 'bypassPermissions') {
+    process.stdout.write(`[HOOK WARNING — would deny] ${reason}\n`);
+    process.exit(0);
+  }
   const out = {
     hookSpecificOutput: {
       hookEventName: 'PreToolUse',
@@ -63,6 +73,8 @@ function deny(reason) {
 }
 
 function ask(reason) {
+  // In bypass mode, skip ask entirely (allow the action)
+  if (_permissionMode === 'bypassPermissions') process.exit(0);
   const out = {
     hookSpecificOutput: {
       hookEventName: 'PreToolUse',
@@ -84,6 +96,11 @@ function approve() {
 }
 
 function block(reason) {
+  // In bypass mode, convert block to approve with warning
+  if (_permissionMode === 'bypassPermissions') {
+    process.stdout.write(`[HOOK WARNING — would block] ${reason}\n`);
+    approve();
+  }
   const out = { decision: 'block', reason };
   process.stdout.write(JSON.stringify(out));
   process.exit(0);
