@@ -88,6 +88,7 @@ Full details: [docs/decisions-en.md](docs/decisions-en.md)
     implementation-standard.md
     logging-standard.md
     tdd-workflow.md
+    resilience-standard.md
   skills/
     project-discovery/      # Extracts project conventions
   settings.json             # Hook configuration
@@ -147,7 +148,7 @@ Restart Claude Code. Run `/project-discovery`.
 |------|-------------|
 | `--project-dir PATH` | Target directory (default: current) |
 | `--project-name NAME` | Project name for CLAUDE.md (auto-inferred from package.json / pyproject.toml / Cargo.toml / go.mod) |
-| `--no-rules` | Skip dev rules (implementation-standard, logging-standard, tdd-workflow) |
+| `--no-rules` | Skip dev rules (implementation, logging, TDD, resilience) |
 
 ### Local development (before npm publish)
 
@@ -221,6 +222,7 @@ Included by default. Skip with `--no-rules`.
 | implementation-standard | Dev process with user confirmation. Code metrics (function < 30 lines, class < 200, nesting < 4). Self-review with `/simplify` trigger. |
 | logging-standard | Trigger-based: "creating API endpoint → add logging". Covers external calls, payments, auth, background jobs. Sentry + Seq. |
 | tdd-workflow | Trigger-based: "new function → write test first". RED → GREEN → REFACTOR cycle. Clear exceptions (configs, DTOs, migrations). |
+| resilience-standard | Trigger-based: "calling external API → what if timeout/5xx?". Covers DB, payments, files, background jobs. Strategies: retry, fallback, circuit breaker, compensation. |
 
 ## FAQ
 
