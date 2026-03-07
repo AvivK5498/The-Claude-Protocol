@@ -10,13 +10,13 @@ Beads orchestration includes a passive knowledge capture system. As agents work,
 Agent runs bd comment BD-001 "LEARNED: ..."
        |
        v
-PostToolUse hook (memory-capture.sh) detects LEARNED: prefix
+PostToolUse hook (memory-capture.cjs) detects LEARNED: prefix
        |
        v
 Extracts structured entry into .beads/memory/knowledge.jsonl
        |
        v
-Next session: session-start.sh surfaces recent knowledge
+Next session: session-start.cjs surfaces recent knowledge
               Agents search when investigating unfamiliar code
 ```
 
@@ -59,24 +59,24 @@ Same key = latest entry wins (deduplication on read).
 
 ### Automatic (session start)
 
-`session-start.sh` displays the 5 most recent deduplicated entries when a new session begins:
+`session-start.cjs` displays the 5 most recent deduplicated entries when a new session begins:
 
 ```
 ## Recent Knowledge (12 entries)
 
   [LEARN] MenuBarExtra popup closes on NSWindow activate. Use activates:false.  (supervisor)
 
-  Search: .beads/memory/recall.sh "keyword"
+  Search: .beads/memory/recall.cjs "keyword"
 ```
 
 ### On-demand (recall script)
 
 ```bash
-.beads/memory/recall.sh "keyword"                  # Search by keyword
-.beads/memory/recall.sh "keyword" --type learned   # Filter by type
-.beads/memory/recall.sh --recent 10                # Show latest entries
-.beads/memory/recall.sh --stats                    # Entry counts
-.beads/memory/recall.sh "keyword" --all            # Include archived entries
+.beads/memory/recall.cjs "keyword"                  # Search by keyword
+.beads/memory/recall.cjs "keyword" --type learned   # Filter by type
+.beads/memory/recall.cjs --recent 10                # Show latest entries
+.beads/memory/recall.cjs --stats                    # Entry counts
+.beads/memory/recall.cjs "keyword" --all            # Include archived entries
 ```
 
 ## Voluntary Contribution
@@ -87,7 +87,7 @@ Exempt: `worker-supervisor` (low-level tasks that don't produce architectural in
 
 ## Rotation
 
-When `knowledge.jsonl` exceeds 1,000 lines, the oldest 500 are moved to `knowledge.archive.jsonl`. The archive is searchable via `recall.sh --all`.
+When `knowledge.jsonl` exceeds 1,000 lines, the oldest 500 are moved to `knowledge.archive.jsonl`. The archive is searchable via `recall.cjs --all`.
 
 ## File Layout
 
@@ -96,13 +96,12 @@ When `knowledge.jsonl` exceeds 1,000 lines, the oldest 500 are moved to `knowled
   memory/
     knowledge.jsonl          # Active knowledge store
     knowledge.archive.jsonl  # Rotated older entries
-    recall.sh                # On-demand search script
+    recall.cjs               # On-demand search script (Node.js)
 .claude/
   hooks/
-    memory-capture.sh        # PostToolUse async hook (captures entries)
-    validate-completion.sh   # SubagentStop hook (verifies work completion)
-    log-dispatch-prompt.sh   # PostToolUse async hook (logs dispatch prompts)
-    session-start.sh         # SessionStart hook (surfaces knowledge)
+    memory-capture.cjs       # PostToolUse hook (captures entries)
+    validate-completion.cjs  # SubagentStop hook (verifies work completion)
+    session-start.cjs        # SessionStart hook (surfaces knowledge)
 ```
 
 ## Design Decisions

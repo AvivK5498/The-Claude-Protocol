@@ -40,6 +40,7 @@ runHook('validate-completion', () => {
   if (isSupervisor) verifyCompletionFormat(lastResponse);
 
   const beadId = extractBeadId(lastResponse);
+  verifyChecklist(lastResponse, beadId);
   verifyComment(agentTranscript);
   verifyWorktree(beadId);
   verifyBeadStatus(beadId);
@@ -130,6 +131,25 @@ function verifyCompletionFormat(response) {
   }
 }
 
+/** Block if completion report has no checklist or has unchecked items. */
+function verifyChecklist(response, beadId) {
+  if (!response.includes('Checklist:')) {
+    block(
+      'Work verification failed: completion report missing Checklist.\n\n' +
+      'Re-read the bead description with `bd show ' + (beadId || '{BEAD_ID}') + '` and add:\n' +
+      'Checklist:\n- [x] requirement 1\n- [x] requirement 2'
+    );
+  }
+
+  const unchecked = response.match(/- \[ \]/g);
+  if (unchecked) {
+    block(
+      `Work verification failed: ${unchecked.length} unchecked item(s) in Checklist.\n\n` +
+      'Complete all requirements before marking done, or update the bead description if requirements changed.'
+    );
+  }
+}
+
 /** Block if no bd comment found in agent transcript. */
 function verifyComment(transcriptPath) {
   try {
@@ -178,7 +198,7 @@ function verifyBeadStatus(beadId) {
 function verifyVerbosity(response) {
   const lineCount = response.split('\n').length;
   const charCount = response.length;
-  if (lineCount > 15 || charCount > 800) {
-    block(`Work verification failed: response too verbose (${lineCount} lines, ${charCount} chars). Max: 15 lines, 800 chars.`);
+  if (lineCount > 25 || charCount > 1200) {
+    block(`Work verification failed: response too verbose (${lineCount} lines, ${charCount} chars). Max: 25 lines, 1200 chars.`);
   }
 }

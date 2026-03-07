@@ -2,55 +2,58 @@
 
 const { execSync } = require('child_process');
 const path = require('path');
-const fs = require('fs');
 
 const args = process.argv.slice(2);
 const command = args[0];
-
 const packageDir = path.dirname(__dirname);
 const bootstrapScript = path.join(packageDir, 'bootstrap.py');
 
 function showHelp() {
   console.log(`
-beads-orchestration - Multi-agent orchestration for Claude Code
+claude-protocol - Enforcement-first orchestration for Claude Code
 
 Usage:
-  beads-orchestration <command> [options]
+  claude-protocol init [options]
 
 Commands:
-  install          Run postinstall to copy skill to ~/.claude/
-  bootstrap        Run bootstrap.py directly (advanced)
+  init          Install into current project (beads, agents, hooks, rules, skills)
   help             Show this help message
 
-Examples:
-  beads-orchestration install
-  beads-orchestration bootstrap --project-dir /path/to/project --claude-only
+Options:
+  --project-name   Project name (auto-inferred if not provided)
+  --project-dir    Project directory (default: current)
+  --no-rules       Skip dev rules (implementation, logging, TDD)
 
-After installing, use /create-beads-orchestration in Claude Code.
+Examples:
+  claude-protocol init
+  claude-protocol init --project-dir /path/to/project
+  claude-protocol init --no-rules
 `);
 }
 
 function runInstall() {
-  const postinstall = path.join(__dirname, 'postinstall.js');
-  require(postinstall);
-}
-
-function runBootstrap() {
-  const bootstrapArgs = args.slice(1).join(' ');
+  const bootstrapArgs = args.slice(1);
+  // --with-rules by default, unless --no-rules is specified
+  if (!bootstrapArgs.includes('--no-rules')) {
+    if (!bootstrapArgs.includes('--with-rules')) {
+      bootstrapArgs.push('--with-rules');
+    }
+  } else {
+    // Remove --no-rules (bootstrap.py doesn't know this flag)
+    const idx = bootstrapArgs.indexOf('--no-rules');
+    bootstrapArgs.splice(idx, 1);
+  }
   try {
     const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
-    execSync(`${pythonCmd} "${bootstrapScript}" ${bootstrapArgs}`, { stdio: 'inherit' });
+    execSync(`${pythonCmd} "${bootstrapScript}" ${bootstrapArgs.join(' ')}`, { stdio: 'inherit' });
   } catch (err) {
     process.exit(err.status || 1);
   }
 }
 
 switch (command) {
-  case 'install':
+  case 'init':
     runInstall();
-    break;
-  case 'bootstrap':
-    runBootstrap();
     break;
   case 'help':
   case '--help':

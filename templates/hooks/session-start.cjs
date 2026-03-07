@@ -60,8 +60,8 @@ runHook('session-start', () => {
 
         // Exact match prevents bd-1 matching bd-10
         if (mergedBranches.includes(dirName)) {
-          output.push(`✓ ${dirName} was merged - consider cleaning up`);
-          output.push(`   Run: git worktree remove "${wtPath}" && bd close "${beadId}"`);
+          output.push(`ACTION REQUIRED: ${dirName} was merged but bead "${beadId}" is still open.`);
+          output.push(`   Run: bd close "${beadId}" && git worktree remove "${wtPath}"`);
           output.push('');
         }
       }
@@ -84,6 +84,23 @@ runHook('session-start', () => {
       }
     } catch {
       // Skip if gh output can't be parsed
+    }
+  }
+
+  // ============================================================
+  // Stale inreview beads — remind to close
+  // ============================================================
+  const { execCommandJSON } = require('./hook-utils.cjs');
+  const allBeads = execCommandJSON('bd', ['list', '--json']);
+  if (Array.isArray(allBeads)) {
+    const inreview = allBeads.filter(b => b.status === 'inreview');
+    if (inreview.length > 0) {
+      output.push('ACTION REQUIRED: Beads in "inreview" — close if merged:');
+      for (const b of inreview.slice(0, 5)) {
+        output.push(`   ${b.id}: ${b.title || '(no title)'} → bd close "${b.id}"`);
+      }
+      if (inreview.length > 5) output.push(`   ... and ${inreview.length - 5} more`);
+      output.push('');
     }
   }
 

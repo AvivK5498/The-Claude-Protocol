@@ -2,12 +2,6 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Task",
-        "hooks": [
-          {"type": "command", "command": "node .claude/hooks/task-pre-use.cjs"}
-        ]
-      },
-      {
         "matcher": "Edit",
         "hooks": [
           {"type": "command", "command": "node .claude/hooks/enforce-branch-before-edit.cjs"}
@@ -24,27 +18,9 @@
         "hooks": [
           {"type": "command", "command": "node .claude/hooks/bash-guard.cjs"}
         ]
-      },
-      {
-        "matcher": "NotebookEdit",
-        "hooks": [
-          {"type": "command", "command": "node .claude/hooks/block-notebook-edit.cjs"}
-        ]
-      },
-      {
-        "matcher": "mcp__provider_delegator__invoke_agent",
-        "hooks": [
-          {"type": "command", "command": "node .claude/hooks/validate-provider-agent.cjs"}
-        ]
       }
     ],
     "PostToolUse": [
-      {
-        "matcher": "Task",
-        "hooks": [
-          {"type": "command", "command": "node .claude/hooks/task-post-use.cjs", "timeout": 10}
-        ]
-      },
       {
         "matcher": "Bash",
         "hooks": [
@@ -63,13 +39,6 @@
       {
         "hooks": [
           {"type": "command", "command": "node .claude/hooks/session-start.cjs"}
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {"type": "command", "command": "node .claude/hooks/clarify-vague-request.cjs"}
         ]
       }
     ],
