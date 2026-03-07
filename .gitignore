@@ -1,3 +1,17 @@
+# Node
+node_modules/
+package-lock.json
+
+# Local bootstrap output (not templates)
+.claude/agents/
+.claude/hooks/
+.claude/skills/
+.claude/settings.json
+.claude/settings.local.json
+CLAUDE.md
+# Rules are committed (dev rules for this project itself)
+!.claude/rules/
+
 # Python
 __pycache__/
 *.py[cod]
@@ -21,3 +35,10 @@ Thumbs.db
 # Test outputs
 /tmp/
 .history/
+
+# bv (beads viewer) local config and caches
+.bv/
+
+# Beads orchestration
+.beads/
+.worktrees/
