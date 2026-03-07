@@ -9,6 +9,8 @@ package-lock.json
 .claude/settings.json
 .claude/settings.local.json
 CLAUDE.md
+# Rules are committed (dev rules for this project itself)
+!.claude/rules/
 
 # Python
 __pycache__/
