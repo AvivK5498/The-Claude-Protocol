@@ -37,6 +37,7 @@ Rule of thumb: 1 bead = 1 PR = 1 reviewable diff.
 - Starting work → `bd update {ID} --status in_progress`
 - Submitted for review → `bd update {ID} --status inreview`
 - Merged/done → `bd close {ID}`
+- **Epic status:** When starting work on the first child → `bd update {EPIC_ID} --status in_progress`. Epic stays `in_progress` until all children are done.
 - **Never leave a bead in `in_progress` across sessions without reason**
 
 ### Discovered during work:
@@ -58,7 +59,8 @@ Don't try to fix it now (unless trivial). Create the bead so it's not forgotten.
    cd "$WORKTREE_PATH"
    ```
 3. Mark in progress: `bd update {BEAD_ID} --status in_progress`
-4. Read bead context: `bd show {BEAD_ID}` and `bd comments {BEAD_ID}`
+4. If this is a child of an epic — check epic status. If epic is still `open`, mark it too: `bd update {EPIC_ID} --status in_progress`
+5. Read bead context: `bd show {BEAD_ID}` and `bd comments {BEAD_ID}`
 
 ## During Implementation
 
