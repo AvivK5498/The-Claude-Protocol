@@ -1,44 +1,44 @@
 # TDD Workflow
 
-## Главное правило
+## Main Rule
 
-Нет продакшн-кода без падающего теста. Написал код до теста — удали, начни с теста.
+No production code without a failing test. Wrote code before test — delete it, start with test.
 
-## Триггеры: когда включается TDD
+## Triggers: when TDD kicks in
 
-При написании кода **остановись и напиши тест первым**, если ты:
+When writing code, **stop and write a test first** if you:
 
-- Создаёшь новую функцию/метод/класс
-- Исправляешь баг — сначала тест, воспроизводящий баг
-- Меняешь поведение существующего кода
-- Добавляешь валидацию или бизнес-правило
-- Пишешь обработку ошибок с конкретной логикой
+- Create a new function/method/class
+- Fix a bug — first a test reproducing the bug
+- Change behavior of existing code
+- Add validation or a business rule
+- Write error handling with specific logic
 
-## Исключения (НЕ нужен TDD)
+## Exceptions (TDD NOT needed)
 
-- Конфигурационные файлы
-- Простые DTO/модели без логики
-- Одноразовые скрипты/миграции
-- Прототипы (но потом удалить и переписать с TDD)
+- Configuration files
+- Simple DTOs/models without logic
+- One-off scripts/migrations
+- Prototypes (but then delete and rewrite with TDD)
 
-## Цикл RED → GREEN → REFACTOR
+## RED → GREEN → REFACTOR Cycle
 
-1. **RED** — напиши один тест на одно поведение. Запусти — должен упасть
-2. **GREEN** — напиши минимальный код, чтобы тест прошёл. Никаких "заодно"
-3. **REFACTOR** — улучши код при зелёных тестах. Запусти тесты после каждого изменения
-4. **Повтори** для следующего поведения
+1. **RED** — write one test for one behavior. Run — it must fail
+2. **GREEN** — write minimal code to make the test pass. No "while I'm at it"
+3. **REFACTOR** — improve code with green tests. Run tests after each change
+4. **Repeat** for the next behavior
 
-## Запреты
+## Prohibitions
 
-- Не менять тест под сломанный код — менять код под тест
-- Не писать 100 строк, потом запускать тесты — максимум 10-15 строк между запусками
-- Не предполагать что тесты проходят — всегда запускать фактически
-- Не оставлять код "как референс" — удалить значит удалить
+- Don't change the test to match broken code — change code to match the test
+- Don't write 100 lines then run tests — max 10-15 lines between runs
+- Don't assume tests pass — always actually run them
+- Don't keep code "as reference" — delete means delete
 
-## Моки: минимум и с пониманием
+## Mocks: minimum and with understanding
 
-- Мокай только внешние зависимости (API, БД, файловая система)
-- Перед моком спроси: "от каких side effects этого метода зависит тест?"
-- Не тестируй поведение мока — тестируй реальный код
-- Мок сложнее теста — используй интеграционный тест вместо мока
-- Неполный мок (без части полей реального ответа) — баг, не экономия
+- Only mock external dependencies (API, DB, filesystem)
+- Before mocking ask: "what side effects of this method does the test depend on?"
+- Don't test mock behavior — test real code
+- Mock more complex than the test — use integration test instead
+- Incomplete mock (missing fields from real response) — it's a bug, not saving effort

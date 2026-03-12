@@ -1,43 +1,57 @@
-# СТАНДАРТ ИМПЛЕМЕНТАЦИИ
+# IMPLEMENTATION STANDARD
 
-## Процесс с пользователем
+## Core Development Principles (HIGHEST PRIORITY)
 
-1. **Обсуждение** — исследовать варианты, уточняющие вопросы
-2. **ТЗ** — сформулировать, разбить на задачи, получить подтверждение
-3. **Реализация** — спросить **"Приступаем к реализации?"**, дождаться подтверждения
+**CRITICAL:** These principles take highest priority over detailed practices.
 
-## Метрики кода
+### Key fundamentals:
+
+1. **Write elegant code that solves the task**
+2. **Do not add backward compatibility unless explicitly requested**
+3. **After each code block:** lint → compile → test → run
+4. **Code must be:** clean, readable, DRY, prefer editing over adding
+5. **Avoid:** unnecessary rollbacks, excessive versioning, over-testing
+6. **Quality over speed** — better to spend time and write well
+7. **When uncertain — ask** while stating your recommendations
+
+## Process with User
+
+1. **Discussion** — explore options, clarifying questions
+2. **Specification** — formulate, break into tasks, get confirmation
+3. **Implementation** — ask **"Shall we proceed?"**, wait for confirmation
+
+## Code Metrics
 
 - Cyclomatic Complexity < 10
-- Function length < 30 строк
-- Class length < 200 строк
-- Parameters < 5 (объект для >5)
-- Nesting < 4 уровней
+- Function length < 30 lines
+- Class length < 200 lines
+- Parameters < 5 (use object for >5)
+- Nesting < 4 levels
 
-## Правило 3-х альтернатив (для архитектурных решений)
+## Rule of 3 Alternatives (for architectural decisions)
 
-1. Придумай 3 решения
-2. Выбери простейшее работающее
-3. Избегай первого что пришло в голову
+1. Come up with 3 solutions
+2. Pick the simplest that works
+3. Avoid the first thing that comes to mind
 
-## Цикл проверки
+## Verification Cycle
 
-После каждого блока кода: линтинг → компиляция → тесты → запуск
+After each code block: lint → compile → test → run
 
-## Self-review (после завершения задачи)
+## Self-review (after completing a task)
 
-Запусти субагента для ревью написанного кода. Чеклист:
+Launch a subagent to review written code. Checklist:
 
-- Есть ли необработанные ошибки, которые молча проглатываются?
-- Есть ли SQL injection, XSS или другие уязвимости на границах ввода?
-- Соблюдены ли метрики (функция <30, класс <200, nesting <4)?
-- Нет ли дублирования, которое стоит вынести?
-- Добавлено ли логирование по триггерам из logging-standard?
-- Написаны ли тесты по триггерам из tdd-workflow?
-- Соответствует ли код конвенциям проекта (CLAUDE.md проекта)?
+- Are there unhandled errors being silently swallowed?
+- Are there SQL injection, XSS, or other vulnerabilities at input boundaries?
+- Are metrics met (function <30, class <200, nesting <4)?
+- Is there duplication worth extracting?
+- Is logging added per logging-standard triggers?
+- Are tests written per tdd-workflow triggers?
+- Does code match project conventions (project CLAUDE.md)?
 
-Если изменено >3 файлов или >50 строк — вызови `/simplify` для упрощения и рефакторинга.
+If >3 files or >50 lines changed — run `/simplify` for cleanup and refactoring.
 
-## Качество превыше скорости
+## Quality Over Speed
 
-Лучше потратить время и написать качественно, чем быстро и потом переделывать.
+Better to spend time and write well than rush and redo later.

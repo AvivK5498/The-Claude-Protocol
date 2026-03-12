@@ -1,33 +1,33 @@
-# Стандарт отказоустойчивости
+# Resilience Standard
 
-## Триггеры: когда думать о fault tolerance
+## Triggers: when to think about fault tolerance
 
-При написании кода **остановись и подумай "что если сломается?"**, если ты:
+When writing code, **stop and think "what if it breaks?"** if you:
 
-- Вызываешь внешний API/сервис → что если таймаут, 5xx, недоступен? Retry с backoff, circuit breaker, fallback
-- Пишешь в БД → что если constraint violation, deadlock, connection lost? Транзакции, retry, graceful error
-- Обрабатываешь платёж или многошаговую операцию → что если сбой между шагами? Идемпотентность, saga, compensation
-- Работаешь с файлами/S3 → что если partial write, disk full, permission denied? Atomic write (temp + rename), cleanup
-- Запускаешь фоновую задачу/job → что если crash mid-job? Retry policy, checkpoint, dead letter queue
-- Распределённая операция → что если часть нод недоступна? Timeout, partial failure handling, eventual consistency
-- Принимаешь пользовательский ввод → что если невалидные данные, injection, overflow? Валидация на границе
+- Call an external API/service → what if timeout, 5xx, unavailable? Retry with backoff, circuit breaker, fallback
+- Write to DB → what if constraint violation, deadlock, connection lost? Transactions, retry, graceful error
+- Process a payment or multi-step operation → what if failure between steps? Idempotency, saga, compensation
+- Work with files/S3 → what if partial write, disk full, permission denied? Atomic write (temp + rename), cleanup
+- Start a background task/job → what if crash mid-job? Retry policy, checkpoint, dead letter queue
+- Distributed operation → what if some nodes unavailable? Timeout, partial failure handling, eventual consistency
+- Accept user input → what if invalid data, injection, overflow? Validate at boundary
 
-## Что делать когда триггер сработал
+## What to do when a trigger fires
 
-1. **Определи failure mode** — что конкретно может пойти не так?
-2. **Определи impact** — что произойдёт с пользователем/системой?
-3. **Выбери стратегию:**
-   - Retry (transient errors) — с exponential backoff и max attempts
-   - Fallback (degraded mode) — вернуть кешированные данные, показать заглушку
-   - Circuit breaker (cascading failures) — прекратить вызовы к упавшему сервису
-   - Compensation (partial failure) — откатить завершённые шаги
-   - Fail fast (unrecoverable) — вернуть понятную ошибку, не зависнуть
-4. **Залогируй** — каждый failure path должен быть залогирован (см. logging-standard)
+1. **Identify failure mode** — what exactly can go wrong?
+2. **Identify impact** — what happens to the user/system?
+3. **Choose strategy:**
+   - Retry (transient errors) — with exponential backoff and max attempts
+   - Fallback (degraded mode) — return cached data, show placeholder
+   - Circuit breaker (cascading failures) — stop calling the failed service
+   - Compensation (partial failure) — roll back completed steps
+   - Fail fast (unrecoverable) — return a clear error, don't hang
+4. **Log it** — every failure path must be logged (see logging-standard)
 
-## Когда НЕ нужно
+## When NOT needed
 
-- Конфигурационные файлы, DTO, модели без логики
-- UI-компоненты без серверного взаимодействия
-- Юнит-тесты
-- Одноразовые скрипты и миграции
-- Внутренние pure-функции без I/O
+- Configuration files, DTOs, models without logic
+- UI components without server interaction
+- Unit tests
+- One-off scripts and migrations
+- Internal pure functions without I/O

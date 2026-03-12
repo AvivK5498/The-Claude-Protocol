@@ -1,28 +1,28 @@
-# Стандарт логирования
+# Logging Standard
 
-## Инфраструктура
+## Infrastructure
 
-- **Sentry** — error/fatal (автоматический capture exceptions)
-- **Seq** — структурированные логи всех уровней
-- Языки: Node (pino), Python (structlog), C# (Serilog)
+- **Sentry** — error/fatal (automatic exception capture)
+- **Seq** — structured logs at all levels
+- Languages: Node (pino), Python (structlog), C# (Serilog)
 
-## Триггеры: когда добавлять логирование
+## Triggers: when to add logging
 
-При написании кода **остановись и подумай о логах**, если ты:
+When writing code, **stop and think about logs** if you:
 
-- Создаёшь API endpoint → логируй вход и результат (info)
-- Вызываешь внешний API/сервис → логируй запрос, ответ, duration_ms (info/error)
-- Обрабатываешь платёж или деньги → логируй каждый шаг (info)
-- Пишешь catch/except → логируй с контекстом, не глотай молча (error)
-- Делаешь операцию с файлами/S3 → логируй результат (info/error)
-- Пишешь авторизацию/аутентификацию → логируй попытки и результат (info/warn)
-- Запускаешь фоновую задачу/job → логируй старт, завершение, duration_ms (info)
-- Инвалидируешь кеш → логируй ключ и причину (info)
+- Create an API endpoint → log entry and result (info)
+- Call an external API/service → log request, response, duration_ms (info/error)
+- Process a payment or money → log every step (info)
+- Write a catch/except → log with context, don't swallow silently (error)
+- Do file/S3 operations → log result (info/error)
+- Write authorization/authentication → log attempts and result (info/warn)
+- Start a background task/job → log start, completion, duration_ms (info)
+- Invalidate cache → log key and reason (info)
 
-## Правила
+## Rules
 
-- **Контекст, не текст:** `{ message: "Photo uploaded", context: { size_mb: 4.2, format: "webp" } }` — не склеивать всё в строку
-- **Всегда trace_id** для связки запросов между сервисами
-- **Замерять duration_ms** на любых I/O операциях
-- **НИКОГДА:** пароли, токены, номера карт, ПДн — только masked/hashed
-- **Уровни:** fatal/error → Sentry + Seq, warn/info → Seq, debug → только dev
+- **Context, not text:** `{ message: "Photo uploaded", context: { size_mb: 4.2, format: "webp" } }` — don't concatenate into a string
+- **Always trace_id** to correlate requests across services
+- **Measure duration_ms** on any I/O operations
+- **NEVER:** passwords, tokens, card numbers, PII — only masked/hashed
+- **Levels:** fatal/error → Sentry + Seq, warn/info → Seq, debug → dev only

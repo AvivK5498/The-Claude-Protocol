@@ -193,24 +193,27 @@ def copy_hooks(project_dir: Path) -> None:
     print("  DONE")
 
 
-def copy_rules_and_skills(project_dir: Path, with_rules: bool) -> None:
+def copy_rules_and_skills(project_dir: Path, with_rules: bool, lang: str = "en") -> None:
     """Copy beads-workflow rule, project-discovery skill, and optional dev rules."""
     print("\n[4/6] Copying rules and skills...")
     rules_dir = project_dir / ".claude" / "rules"
     rules_dir.mkdir(parents=True, exist_ok=True)
 
-    # Always copy beads workflow
+    # Determine source directory based on language
+    rules_src_dir = TEMPLATES_DIR / ("rules-ru" if lang == "ru" else "rules")
+
+    # Always copy beads workflow (always English — it's the canonical format)
     beads_src = TEMPLATES_DIR / "rules" / "beads-workflow.md"
     if beads_src.exists():
         shutil.copy2(beads_src, rules_dir / "beads-workflow.md")
         print("  - rules/beads-workflow.md")
 
-    # Optional dev rules
+    # Optional dev rules (from language-specific directory)
     if with_rules:
-        for rule_file in (TEMPLATES_DIR / "rules").glob("*.md"):
+        for rule_file in rules_src_dir.glob("*.md"):
             if rule_file.name != "beads-workflow.md":
                 shutil.copy2(rule_file, rules_dir / rule_file.name)
-                print(f"  - rules/{rule_file.name}")
+                print(f"  - rules/{rule_file.name}" + (f" ({lang})" if lang != "en" else ""))
 
     # Project discovery skill
     skills_dir = project_dir / ".claude" / "skills"
@@ -317,6 +320,7 @@ def main():
     parser.add_argument("--project-name", default=None, help="Project name (auto-inferred if not provided)")
     parser.add_argument("--project-dir", default=".", help="Project directory")
     parser.add_argument("--with-rules", action="store_true", help="Also copy dev rules (implementation-standard, logging, tdd)")
+    parser.add_argument("--lang", default="en", choices=["en", "ru"], help="Language for dev rules (default: en)")
     args = parser.parse_args()
 
     project_dir = Path(args.project_dir).resolve()
@@ -336,7 +340,7 @@ def main():
 
     copy_agents(project_dir, project_name)
     copy_hooks(project_dir)
-    copy_rules_and_skills(project_dir, args.with_rules)
+    copy_rules_and_skills(project_dir, args.with_rules, args.lang)
     copy_settings_and_claude_md(project_dir, project_name)
     setup_gitignore(project_dir)
 

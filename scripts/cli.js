@@ -23,9 +23,11 @@ Options:
   --project-name   Project name (auto-inferred if not provided)
   --project-dir    Project directory (default: current)
   --no-rules       Skip dev rules (implementation, logging, TDD)
+  --lang <en|ru>   Language for dev rules (default: en)
 
 Examples:
   claude-protocol init
+  claude-protocol init --lang ru
   claude-protocol init --project-dir /path/to/project
   claude-protocol init --no-rules
 `);
