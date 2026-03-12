@@ -5,7 +5,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { readStdinJSON, getField, getProjectDir, runHook } = require('./hook-utils.cjs');
+const { readStdinJSON, getField, getProjectDir, containsPathSegment, runHook } = require('./hook-utils.cjs');
 
 runHook('memory-capture', () => {
   const input = readStdinJSON();
@@ -48,7 +48,7 @@ runHook('memory-capture', () => {
 
   // Detect source: inside worktree → supervisor, otherwise orchestrator
   const cwd = getField(input, 'cwd');
-  const source = cwd.replace(/\\/g, '/').includes('.worktrees/') ? 'supervisor' : 'orchestrator';
+  const source = containsPathSegment(cwd, '.worktrees') ? 'supervisor' : 'orchestrator';
 
   // Build tags
   const tags = [type];

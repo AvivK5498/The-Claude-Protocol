@@ -92,7 +92,6 @@ for (let i = 0; i < args.length; i++) {
 if (showStats) {
   const entries = readJsonl(knowledgeFile);
   const learned = entries.filter(e => e.type === 'learned').length;
-  const investigation = entries.filter(e => e.type === 'investigation').length;
   const uniqueKeys = new Set(entries.map(e => e.key)).size;
   const archiveEntries = readJsonl(archiveFile);
 
@@ -100,7 +99,6 @@ if (showStats) {
   console.log(`  Active entries: ${entries.length}`);
   console.log(`  Unique keys:    ${uniqueKeys}`);
   console.log(`  Learned:        ${learned}`);
-  console.log(`  Investigation:  ${investigation}`);
   console.log(`  Archived:       ${archiveEntries.length}`);
   process.exit(0);
 }

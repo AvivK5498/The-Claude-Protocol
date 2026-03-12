@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const path = require('path');
 
 const args = process.argv.slice(2);
@@ -45,7 +45,7 @@ function runInstall() {
   }
   try {
     const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
-    execSync(`${pythonCmd} "${bootstrapScript}" ${bootstrapArgs.join(' ')}`, { stdio: 'inherit' });
+    execFileSync(pythonCmd, [bootstrapScript, ...bootstrapArgs], { stdio: 'inherit' });
   } catch (err) {
     process.exit(err.status || 1);
   }
@@ -53,6 +53,7 @@ function runInstall() {
 
 switch (command) {
   case 'init':
+  case 'install':
     runInstall();
     break;
   case 'help':

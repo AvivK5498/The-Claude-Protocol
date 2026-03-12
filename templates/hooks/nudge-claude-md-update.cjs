@@ -12,14 +12,12 @@ runHook('nudge-claude-md-update', () => {
   if (!repoRoot) process.exit(0);
 
   const claudeMd = path.join(repoRoot, 'CLAUDE.md');
+  let content;
   try {
-    fs.accessSync(claudeMd);
+    content = fs.readFileSync(claudeMd, 'utf8');
   } catch {
     process.exit(0);
   }
-
-  // Check if Current State section exists and has content
-  const content = fs.readFileSync(claudeMd, 'utf8');
   const sectionMatch = content.match(/^## Current State\s*\n([\s\S]*?)(?=\n## |\n*$)/m);
   const sectionBody = sectionMatch ? sectionMatch[1] : '';
 

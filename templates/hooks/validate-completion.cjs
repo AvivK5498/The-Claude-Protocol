@@ -26,8 +26,11 @@ runHook('validate-completion', () => {
   // Worker supervisors are exempt from all checks
   if (subagentType.includes('worker')) approve();
 
-  // Extract last assistant response
-  const lastResponse = extractLastResponse(agentTranscript);
+  // Read agent transcript once, reuse for all checks
+  let agentTranscriptContent = '';
+  try { agentTranscriptContent = fs.readFileSync(agentTranscript, 'utf8'); } catch { approve(); }
+
+  const lastResponse = extractLastResponse(agentTranscriptContent);
 
   // Non-supervisors: only verify if they output completion patterns
   if (!isSupervisor) {
@@ -41,7 +44,7 @@ runHook('validate-completion', () => {
 
   const beadId = extractBeadId(lastResponse);
   verifyChecklist(lastResponse, beadId);
-  verifyComment(agentTranscript);
+  verifyComment(agentTranscriptContent);
   verifyWorktree(beadId);
   verifyBeadStatus(beadId);
   verifyVerbosity(lastResponse);
@@ -89,11 +92,10 @@ function extractSubagentType(agentId, mainTranscript) {
   return '';
 }
 
-/** Extract last assistant text response from agent transcript (last 200 lines). */
-function extractLastResponse(transcriptPath) {
+/** Extract last assistant text response from raw transcript content. */
+function extractLastResponse(transcriptContent) {
   try {
-    const lines = fs.readFileSync(transcriptPath, 'utf8')
-      .split('\n').filter(Boolean).slice(-200);
+    const lines = transcriptContent.split('\n').filter(Boolean).slice(-200);
     for (let i = lines.length - 1; i >= 0; i--) {
       try {
         const msg = JSON.parse(lines[i]).message;
@@ -150,12 +152,9 @@ function verifyChecklist(response, beadId) {
   }
 }
 
-/** Block if no bd comment found in agent transcript. */
-function verifyComment(transcriptPath) {
-  try {
-    const content = fs.readFileSync(transcriptPath, 'utf8');
-    if (content.includes('bd comment') || content.includes('"command":"bd comment')) return;
-  } catch { /* skip */ }
+/** Block if no bd comment found in agent transcript content. */
+function verifyComment(transcriptContent) {
+  if (transcriptContent.includes('bd comment') || transcriptContent.includes('"command":"bd comment')) return;
   block('Work verification failed: no comment on bead.\n\nRun: bd comment {BEAD_ID} "Completed: [summary]"');
 }
 

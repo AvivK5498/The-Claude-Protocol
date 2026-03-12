@@ -30,7 +30,7 @@ runHook('bash-guard', () => {
 
   // === Git safety checks ===
   if (firstWord === 'git') {
-    if (command.includes('--no-verify') || / -n\b/.test(command)) {
+    if (command.includes('--no-verify') || /\bcommit\b.*\s-n\b/.test(command)) {
       deny(
         'git commit --no-verify is blocked.\n\n' +
         'Pre-commit hooks exist for a reason (type-check, lint, tests).\n' +

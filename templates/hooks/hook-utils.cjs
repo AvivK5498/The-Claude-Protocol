@@ -99,7 +99,8 @@ function block(reason) {
   // In bypass mode, convert block to approve with warning
   if (_permissionMode === 'bypassPermissions') {
     process.stdout.write(`[HOOK WARNING — would block] ${reason}\n`);
-    approve();
+    approve(); // approve() calls process.exit(0)
+    return;    // unreachable, but signals intent to readers
   }
   const out = { decision: 'block', reason };
   process.stdout.write(JSON.stringify(out));

@@ -5,7 +5,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { injectText, execCommand, getProjectDir, runHook } = require('./hook-utils.cjs');
+const { injectText, execCommand, execCommandJSON, getProjectDir, runHook } = require('./hook-utils.cjs');
 
 runHook('session-start', () => {
   const projectDir = getProjectDir();
@@ -90,7 +90,6 @@ runHook('session-start', () => {
   // ============================================================
   // Stale inreview beads — remind to close
   // ============================================================
-  const { execCommandJSON } = require('./hook-utils.cjs');
   const allBeads = execCommandJSON('bd', ['list', '--json']);
   if (Array.isArray(allBeads)) {
     const inreview = allBeads.filter(b => b.status === 'inreview');
