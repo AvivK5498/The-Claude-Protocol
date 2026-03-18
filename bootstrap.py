@@ -50,7 +50,7 @@ def _from_package_json(project_dir: Path) -> str | None:
     if not p.exists():
         return None
     try:
-        name = json.loads(p.read_text()).get("name")
+        name = json.loads(p.read_text(encoding='utf-8')).get("name")
         return name.replace("-", " ").replace("_", " ").title() if name else None
     except Exception:
         return None
@@ -63,7 +63,7 @@ def _from_pyproject(project_dir: Path) -> str | None:
     if not p.exists():
         return None
     try:
-        data = tomllib.loads(p.read_text())
+        data = tomllib.loads(p.read_text(encoding='utf-8'))
         name = data.get("project", {}).get("name") or data.get("tool", {}).get("poetry", {}).get("name")
         return name.replace("-", " ").replace("_", " ").title() if name else None
     except Exception:
@@ -77,7 +77,7 @@ def _from_cargo(project_dir: Path) -> str | None:
     if not p.exists():
         return None
     try:
-        name = tomllib.loads(p.read_text()).get("package", {}).get("name")
+        name = tomllib.loads(p.read_text(encoding='utf-8')).get("package", {}).get("name")
         return name.replace("-", " ").replace("_", " ").title() if name else None
     except Exception:
         return None
@@ -88,7 +88,7 @@ def _from_go_mod(project_dir: Path) -> str | None:
     if not p.exists():
         return None
     try:
-        for line in p.read_text().splitlines():
+        for line in p.read_text(encoding='utf-8').splitlines():
             if line.startswith("module "):
                 name = line.split()[1].split("/")[-1]
                 return name.replace("-", " ").replace("_", " ").title()
@@ -102,11 +102,11 @@ def _from_go_mod(project_dir: Path) -> str | None:
 # ============================================================================
 
 def copy_and_replace(source: Path, dest: Path, replacements: dict) -> None:
-    content = source.read_text()
+    content = source.read_text(encoding='utf-8')
     for placeholder, value in replacements.items():
         content = content.replace(placeholder, value)
     dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(content)
+    dest.write_text(content, encoding='utf-8')
 
 
 # ============================================================================
@@ -236,10 +236,10 @@ def copy_settings_and_claude_md(project_dir: Path, project_name: str) -> None:
     settings_dest = project_dir / ".claude" / "settings.json"
     settings_src = TEMPLATES_DIR / "settings.json"
     if settings_src.exists():
-        new_settings = json.loads(settings_src.read_text())
+        new_settings = json.loads(settings_src.read_text(encoding='utf-8'))
         if settings_dest.exists():
             try:
-                existing = json.loads(settings_dest.read_text())
+                existing = json.loads(settings_dest.read_text(encoding='utf-8'))
                 # Merge hooks by event type
                 for event, hooks_list in new_settings.get("hooks", {}).items():
                     existing.setdefault("hooks", {}).setdefault(event, [])
@@ -252,7 +252,7 @@ def copy_settings_and_claude_md(project_dir: Path, project_name: str) -> None:
                         cmd = hook.get("hooks", [{}])[0].get("command", "")
                         if cmd not in existing_commands:
                             existing["hooks"][event].append(hook)
-                settings_dest.write_text(json.dumps(existing, indent=2) + "\n")
+                settings_dest.write_text(json.dumps(existing, indent=2) + "\n", encoding='utf-8')
                 print("  - settings.json (merged hooks)")
             except Exception:
                 shutil.copy2(settings_src, settings_dest)
@@ -266,18 +266,18 @@ def copy_settings_and_claude_md(project_dir: Path, project_name: str) -> None:
     claude_dest = project_dir / "CLAUDE.md"
     claude_src = TEMPLATES_DIR / "CLAUDE.md"
     if claude_src.exists():
-        beads_content = claude_src.read_text().replace("[Project]", project_name)
+        beads_content = claude_src.read_text(encoding='utf-8').replace("[Project]", project_name)
         if claude_dest.exists():
-            existing_content = claude_dest.read_text()
+            existing_content = claude_dest.read_text(encoding='utf-8')
             if "## Workflow" in existing_content and "beads" in existing_content.lower():
                 print("  - CLAUDE.md (already has beads section, skipped)")
             else:
                 separator = "\n\n---\n\n# Beads Orchestration\n\n"
-                with open(claude_dest, "a") as f:
+                with open(claude_dest, "a", encoding="utf-8") as f:
                     f.write(separator + beads_content)
                 print("  - CLAUDE.md (appended beads section)")
         else:
-            claude_dest.write_text(beads_content)
+            claude_dest.write_text(beads_content, encoding='utf-8')
             print("  - CLAUDE.md (created)")
 
     print("  DONE")
@@ -290,10 +290,10 @@ def setup_gitignore(project_dir: Path) -> None:
     entries = [".beads/", ".worktrees/"]
 
     if gitignore_path.exists():
-        content = gitignore_path.read_text()
+        content = gitignore_path.read_text(encoding='utf-8')
         missing = [e for e in entries if e not in content and e.rstrip("/") not in content]
         if missing:
-            with open(gitignore_path, "a") as f:
+            with open(gitignore_path, "a", encoding="utf-8") as f:
                 if content and not content.endswith("\n"):
                     f.write("\n")
                 f.write("\n# Beads orchestration\n")
@@ -303,7 +303,7 @@ def setup_gitignore(project_dir: Path) -> None:
         else:
             print("  - Already configured")
     else:
-        gitignore_path.write_text("# Beads orchestration\n.beads/\n.worktrees/\n")
+        gitignore_path.write_text("# Beads orchestration\n.beads/\n.worktrees/\n", encoding='utf-8')
         print("  - Created .gitignore")
 
     print("  DONE")
