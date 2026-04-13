@@ -50,14 +50,12 @@ Don't try to fix it now (unless trivial). Create the bead so it's not forgotten.
 ## Task Start
 
 1. Parse BEAD_ID from dispatch prompt
-2. Create worktree:
+2. Create worktree (MUST use bd, not raw git — see Banned):
    ```bash
-   REPO_ROOT=$(git rev-parse --show-toplevel)
-   WORKTREE_PATH="$REPO_ROOT/.worktrees/bd-{BEAD_ID}"
-   mkdir -p "$REPO_ROOT/.worktrees"
-   [[ ! -d "$WORKTREE_PATH" ]] && git worktree add "$WORKTREE_PATH" -b bd-{BEAD_ID}
-   cd "$WORKTREE_PATH"
+   bd worktree create .worktrees/bd-{BEAD_ID} --branch bd-{BEAD_ID}
+   cd .worktrees/bd-{BEAD_ID}
    ```
+   This creates `.beads/redirect` pointing to the main `.beads/` — all bd commands use the single dolt server from the main repo. Raw `git worktree add` would create a shadow `.beads/` copy with its own dolt server, causing process leaks and data loss.
 3. Mark in progress: `bd update {BEAD_ID} --status in_progress`
 4. If this is a child of an epic — check epic status. If epic is still `open`, mark it too: `bd update {EPIC_ID} --status in_progress`
 5. Read bead context: `bd show {BEAD_ID}` and `bd comments {BEAD_ID}`
@@ -112,6 +110,7 @@ Execute ALL steps in order:
 | Search | `bd search "query"` |
 | Status | `bd status` (overview/statistics) |
 | Prime | `bd prime` (AI context recovery) |
+| Worktree | `bd worktree create <path> --branch <name>` / `bd worktree remove <path>` |
 
 All commands support `--json` for structured output. There is NO `export`, `import`, or `stats` command.
 
@@ -121,3 +120,4 @@ All commands support `--json` for structured output. There is NO `export`, `impo
 - Implementing without BEAD_ID
 - Merging your own branch (user merges via PR)
 - Editing files outside your worktree
+- Raw `git worktree add` / `git worktree remove` — MUST use `bd worktree create` / `bd worktree remove`. Raw git worktree creates shadow `.beads/` copies, spawns orphan dolt-server processes, blocks file deletion, and loses bead data. See: docs on `.beads/redirect` mechanism.
