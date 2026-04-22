@@ -885,8 +885,10 @@ class TestUpgradeFlag:
         assert len(calls) == 1
         assert calls[0]["dry_run"] is False
 
-    def test_upgrade_without_manifest_behaves_like_init(self, tmp_path, monkeypatch):
-        """--upgrade on a fresh project (no manifest) skips cleanup_obsolete."""
+    def test_upgrade_runs_cleanup_without_manifest(self, tmp_path, monkeypatch):
+        """--upgrade must still run cleanup_obsolete for legacy installs (no
+        manifest). _auto_inject_legacy_files handles the no-manifest case;
+        skipping cleanup would leave pre-manifest OBSOLETE_* files on disk."""
         calls = []
 
         def fake_cleanup(*args, **kw):
@@ -910,7 +912,7 @@ class TestUpgradeFlag:
         with pytest.raises(SystemExit) as exc:
             bootstrap.main()
         assert exc.value.code == 0
-        assert calls == []
+        assert len(calls) == 1
 
 
 class TestAllFlag:

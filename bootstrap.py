@@ -838,11 +838,6 @@ def bootstrap_project(
         print(f"\nERROR: Templates not found: {TEMPLATES_DIR}")
         return 1
 
-    manifest_path = project_dir / ".claude" / ".manifest.json"
-    had_manifest = manifest_path.exists()
-    if upgrade and not had_manifest:
-        print("\n[UPGRADE] No existing manifest — running as plain init.\n")
-
     manifest = load_manifest(project_dir)
     all_skipped = []
 
@@ -866,8 +861,10 @@ def bootstrap_project(
         except Exception:
             pass
 
-    # Run upgrade cleanup AFTER init steps so manifest reflects our files
-    if upgrade and had_manifest:
+    # Run upgrade cleanup AFTER init steps so manifest reflects our files.
+    # Legacy installs without manifest are handled by _auto_inject_legacy_files
+    # inside cleanup_obsolete — the OBSOLETE_* paths are dev-controlled and safe.
+    if upgrade:
         report = cleanup_obsolete(project_dir, manifest, dry_run)
         _print_cleanup_report(report, dry_run)
 
@@ -887,7 +884,7 @@ def bootstrap_project(
             print(f"      Review: diff .claude/{rel} .claude/.upgrades/{rel}")
 
     # Post-upgrade health check — never fatal
-    if upgrade and had_manifest and not dry_run:
+    if upgrade and not dry_run:
         print("")
         run_bd_doctor(project_dir)
 
