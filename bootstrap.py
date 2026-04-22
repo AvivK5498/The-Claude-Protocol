@@ -758,10 +758,10 @@ def copy_settings_and_claude_md(project_dir: Path, project_name: str) -> None:
 
 
 def setup_gitignore(project_dir: Path) -> None:
-    """Ensure .beads/ is in .gitignore."""
+    """Ensure .beads/, .worktrees/, and .claude/.upgrades/ are in .gitignore."""
     print("\n[6/6] Setting up .gitignore...")
     gitignore_path = project_dir / ".gitignore"
-    entries = [".beads/", ".worktrees/"]
+    entries = [".beads/", ".worktrees/", ".claude/.upgrades/"]
 
     if gitignore_path.exists():
         content = gitignore_path.read_text(encoding='utf-8')
@@ -777,7 +777,10 @@ def setup_gitignore(project_dir: Path) -> None:
         else:
             print("  - Already configured")
     else:
-        gitignore_path.write_text("# Beads orchestration\n.beads/\n.worktrees/\n", encoding='utf-8')
+        gitignore_path.write_text(
+            "# Beads orchestration\n.beads/\n.worktrees/\n.claude/.upgrades/\n",
+            encoding='utf-8',
+        )
         print("  - Created .gitignore")
 
     print("  DONE")

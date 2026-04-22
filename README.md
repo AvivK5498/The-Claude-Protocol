@@ -36,7 +36,7 @@ Claude Protocol fixes this with three things:
 
 - **Beads** — persistent task tracking. One task = one worktree = one PR. Survives restarts and compaction.
 - **Hooks** — enforcement, not instructions. Edits on main are blocked. Completion without checklist is blocked. `git --no-verify` is blocked.
-- **Knowledge base** — every LEARNED comment is captured automatically and surfaced at session start.
+- **bd prime** — session start hook loads recent beads so state survives context loss.
 
 Constraints over instructions. What's blocked can't be ignored.
 
@@ -47,6 +47,19 @@ This project started as a fork of [The Claude Protocol](https://github.com/AvivK
 v3 is a ground-up rewrite. Different architecture, different philosophy. See [decisions.md](docs/decisions-en.md) for full rationale.
 
 ## What Changed in v3
+
+### v3.3.0 (2026-04-22)
+
+- **Upgrade mechanism** — new `npx claude-protocol upgrade` command with
+  `--dry-run` and `--all <parent>` for batch runs across workspaces. Every
+  removal is backed up to `.claude/.upgrades/<timestamp>/`.
+- **Memory system removed** — `knowledge.jsonl`, `memory-capture.cjs`, and
+  `recall.cjs` are gone. bd's native `bd remember` / `bd memories` takes
+  over. Legacy files are cleaned up automatically during upgrade.
+- **bd 1.0.2 compatibility** — bd repo moved to gastownhall; install URLs
+  updated. Workflow no longer uses the obsolete `inreview` status.
+- **Path traversal guard** — upgrade never writes or deletes outside the
+  project directory.
 
 Stripped everything that doesn't improve output. Added everything that does.
 
@@ -165,6 +178,46 @@ Restart Claude Code. Run `/project-discovery`.
 cd /path/to/claude-protocol && npm link
 npx claude-protocol init  # works in any project
 ```
+
+## Upgrade
+
+Existing projects upgrade safely — user-modified files are preserved; only
+claude-protocol's own artifacts are cleaned up.
+
+### Preview (recommended first)
+
+```bash
+npx claude-protocol@latest upgrade --dry-run
+```
+
+Prints the exact list of files, directories, and settings-hook entries that
+would change. Touches nothing.
+
+### Apply
+
+```bash
+npx claude-protocol@latest upgrade
+```
+
+Runs the init flow and then strips obsolete artifacts. Every removal is
+backed up under `.claude/.upgrades/<UTC-timestamp>/` so you can roll back by
+copying files out of the backup directory.
+
+### Batch (multiple projects)
+
+```bash
+npx claude-protocol@latest upgrade --all /path/to/parent
+```
+
+Iterates every direct subdirectory of the parent that contains a `.beads/`
+folder and upgrades each one. Combine with `--dry-run` to audit before
+applying.
+
+### Rollback
+
+The backup directory `.claude/.upgrades/<timestamp>/obsolete/` mirrors the
+project tree. Copy the file(s) you want back into place. Nothing is ever
+hard-deleted.
 
 ## Workflow
 

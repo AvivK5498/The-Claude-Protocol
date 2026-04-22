@@ -235,13 +235,31 @@ class TestSetupGitignore:
 
     def test_detects_entries_without_trailing_slash(self, tmp_path, capsys):
         gitignore = tmp_path / ".gitignore"
-        gitignore.write_text(".beads\n.worktrees\n")
+        gitignore.write_text(".beads\n.worktrees\n.claude/.upgrades\n")
 
         setup_gitignore(tmp_path)
 
         content = gitignore.read_text()
         # Should detect ".beads" matches ".beads/" and not add duplicate
         assert content.count("beads") == 1
+
+    def test_adds_upgrades_entry_on_first_run(self, tmp_path, capsys):
+        """setup_gitignore writes .claude/.upgrades/ when it's missing."""
+        gitignore = tmp_path / ".gitignore"
+        gitignore.write_text("node_modules/\n")
+
+        setup_gitignore(tmp_path)
+
+        content = gitignore.read_text()
+        assert ".claude/.upgrades/" in content
+
+    def test_upgrades_entry_not_duplicated_on_rerun(self, tmp_path, capsys):
+        """Running setup_gitignore twice must not duplicate .claude/.upgrades/."""
+        setup_gitignore(tmp_path)
+        setup_gitignore(tmp_path)
+
+        content = (tmp_path / ".gitignore").read_text()
+        assert content.count(".claude/.upgrades/") == 1
 
 
 # ============================================================================
