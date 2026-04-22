@@ -9,6 +9,7 @@ import pytest
 # Add project root to path so we can import bootstrap
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+import bootstrap
 from bootstrap import (
     infer_project_name,
     copy_and_replace,
@@ -23,6 +24,8 @@ from bootstrap import (
     save_manifest,
     should_update_file,
     save_upgrade,
+    cleanup_obsolete,
+    run_bd_doctor,
     TEMPLATES_DIR,
 )
 
@@ -406,3 +409,405 @@ class TestSaveUpgrade:
         save_upgrade(tmp_path, "agents/code-reviewer.md", "v2 content")
         dest = tmp_path / ".claude" / ".upgrades" / "agents" / "code-reviewer.md"
         assert dest.exists()
+
+
+# ============================================================================
+# cleanup_obsolete
+# ============================================================================
+
+class TestCleanupObsolete:
+    def test_empty_lists_noop(self, tmp_path, monkeypatch):
+        """Empty OBSOLETE_* lists → empty report, no backup dir, no changes."""
+        monkeypatch.setattr(bootstrap, "OBSOLETE_FILES", [])
+        monkeypatch.setattr(bootstrap, "OBSOLETE_DIRS", [])
+        monkeypatch.setattr(bootstrap, "OBSOLETE_SETTINGS_HOOKS", [])
+        monkeypatch.setattr(bootstrap, "OBSOLETE_LOCAL_SETTINGS_PATTERNS", [])
+
+        (tmp_path / "foo.txt").write_text("hello")
+        manifest = {"files": {"foo.txt": "sha256:abc"}}
+
+        report = cleanup_obsolete(tmp_path, manifest, dry_run=False)
+
+        assert report["removed_files"] == []
+        assert report["removed_dirs"] == []
+        assert report["stripped_settings_hooks"] == []
+        assert report["stripped_local_patterns"] == []
+        assert report["backups"][0] is None
+        assert not (tmp_path / ".claude" / ".upgrades").exists()
+        # File untouched, manifest untouched
+        assert (tmp_path / "foo.txt").exists()
+        assert manifest["files"] == {"foo.txt": "sha256:abc"}
+
+    def test_removes_manifest_file(self, tmp_path, monkeypatch):
+        """File in OBSOLETE_FILES + manifest → removed and backed up."""
+        monkeypatch.setattr(bootstrap, "OBSOLETE_FILES", ["foo.txt"])
+        monkeypatch.setattr(bootstrap, "OBSOLETE_DIRS", [])
+        monkeypatch.setattr(bootstrap, "OBSOLETE_SETTINGS_HOOKS", [])
+        monkeypatch.setattr(bootstrap, "OBSOLETE_LOCAL_SETTINGS_PATTERNS", [])
+
+        target = tmp_path / "foo.txt"
+        target.write_text("obsolete content")
+        manifest = {"files": {"foo.txt": "sha256:abc"}}
+
+        report = cleanup_obsolete(tmp_path, manifest, dry_run=False)
+
+        assert "foo.txt" in report["removed_files"]
+        assert not target.exists()
+        assert "foo.txt" not in manifest["files"]
+        # Backup exists
+        backup_root = Path(report["backups"][0])
+        assert backup_root.exists()
+        backup_file = backup_root / "obsolete" / "foo.txt"
+        assert backup_file.exists()
+        assert backup_file.read_text() == "obsolete content"
+
+    def test_skips_non_manifest_file(self, tmp_path, monkeypatch):
+        """File in OBSOLETE_FILES but NOT in manifest → not touched (user-created)."""
+        monkeypatch.setattr(bootstrap, "OBSOLETE_FILES", ["user.txt"])
+        monkeypatch.setattr(bootstrap, "OBSOLETE_DIRS", [])
+        monkeypatch.setattr(bootstrap, "OBSOLETE_SETTINGS_HOOKS", [])
+        monkeypatch.setattr(bootstrap, "OBSOLETE_LOCAL_SETTINGS_PATTERNS", [])
+
+        target = tmp_path / "user.txt"
+        target.write_text("user file, not ours")
+        manifest = {"files": {}}
+
+        report = cleanup_obsolete(tmp_path, manifest, dry_run=False)
+
+        assert report["removed_files"] == []
+        assert target.exists()
+        assert target.read_text() == "user file, not ours"
+        assert not (tmp_path / ".claude" / ".upgrades").exists()
+
+    def test_dry_run(self, tmp_path, monkeypatch):
+        """dry_run=True → report populated, disk unchanged."""
+        monkeypatch.setattr(bootstrap, "OBSOLETE_FILES", ["foo.txt"])
+        monkeypatch.setattr(bootstrap, "OBSOLETE_DIRS", ["old_dir"])
+        monkeypatch.setattr(bootstrap, "OBSOLETE_SETTINGS_HOOKS", [])
+        monkeypatch.setattr(bootstrap, "OBSOLETE_LOCAL_SETTINGS_PATTERNS", [])
+
+        (tmp_path / "foo.txt").write_text("obsolete")
+        (tmp_path / "old_dir").mkdir()
+        (tmp_path / "old_dir" / "nested.txt").write_text("data")
+        manifest = {"files": {"foo.txt": "sha256:abc"}}
+
+        report = cleanup_obsolete(tmp_path, manifest, dry_run=True)
+
+        assert "foo.txt" in report["removed_files"]
+        assert "old_dir" in report["removed_dirs"]
+        assert report["backups"][0] is None
+        # Nothing removed on disk
+        assert (tmp_path / "foo.txt").exists()
+        assert (tmp_path / "old_dir").exists()
+        assert not (tmp_path / ".claude" / ".upgrades").exists()
+        # Manifest unchanged
+        assert manifest["files"] == {"foo.txt": "sha256:abc"}
+
+    def test_strips_settings_hooks(self, tmp_path, monkeypatch):
+        """Hook with matching command substring gets stripped, original backed up."""
+        monkeypatch.setattr(bootstrap, "OBSOLETE_FILES", [])
+        monkeypatch.setattr(bootstrap, "OBSOLETE_DIRS", [])
+        monkeypatch.setattr(bootstrap, "OBSOLETE_SETTINGS_HOOKS", ["memory-capture.cjs"])
+        monkeypatch.setattr(bootstrap, "OBSOLETE_LOCAL_SETTINGS_PATTERNS", [])
+
+        claude_dir = tmp_path / ".claude"
+        claude_dir.mkdir()
+        settings = claude_dir / "settings.json"
+        settings.write_text(json.dumps({
+            "hooks": {
+                "PostToolUse": [
+                    {"matcher": "Bash", "hooks": [{"type": "command", "command": "node .claude/hooks/memory-capture.cjs"}]},
+                    {"matcher": "Edit", "hooks": [{"type": "command", "command": "node .claude/hooks/keep.cjs"}]},
+                ]
+            }
+        }))
+        manifest = {"files": {}}
+
+        report = cleanup_obsolete(tmp_path, manifest, dry_run=False)
+
+        assert len(report["stripped_settings_hooks"]) == 1
+        assert "memory-capture.cjs" in report["stripped_settings_hooks"][0]
+        # Settings file updated
+        updated = json.loads(settings.read_text())
+        commands = [h["hooks"][0]["command"] for h in updated["hooks"]["PostToolUse"]]
+        assert commands == ["node .claude/hooks/keep.cjs"]
+        # Backup exists
+        backup_root = Path(report["backups"][0])
+        assert (backup_root / "obsolete" / "settings.json").exists()
+
+    def test_removes_manifest_dir_with_nested_entries(self, tmp_path, monkeypatch):
+        """Directory removal also strips matching manifest entries."""
+        monkeypatch.setattr(bootstrap, "OBSOLETE_FILES", [])
+        monkeypatch.setattr(bootstrap, "OBSOLETE_DIRS", [".beads/memory"])
+        monkeypatch.setattr(bootstrap, "OBSOLETE_SETTINGS_HOOKS", [])
+        monkeypatch.setattr(bootstrap, "OBSOLETE_LOCAL_SETTINGS_PATTERNS", [])
+
+        mem_dir = tmp_path / ".beads" / "memory"
+        mem_dir.mkdir(parents=True)
+        (mem_dir / "knowledge.jsonl").write_text("")
+        (mem_dir / "recall.cjs").write_text("// old")
+        manifest = {"files": {".beads/memory/recall.cjs": "sha256:x", "other.md": "sha256:y"}}
+
+        report = cleanup_obsolete(tmp_path, manifest, dry_run=False)
+
+        assert ".beads/memory" in report["removed_dirs"]
+        assert not mem_dir.exists()
+        assert ".beads/memory/recall.cjs" not in manifest["files"]
+        assert "other.md" in manifest["files"]
+
+    def test_rejects_relative_traversal(self, tmp_path, monkeypatch, capsys):
+        """OBSOLETE_FILES entry with ../ → skipped, external file untouched, no backup."""
+        # project_dir must be a subdir of tmp_path so `../escape.txt` lands in tmp_path
+        project_dir = tmp_path / "proj"
+        project_dir.mkdir()
+        external = tmp_path / "escape.txt"
+        external.write_text("external content — do not touch")
+
+        monkeypatch.setattr(bootstrap, "OBSOLETE_FILES", ["../escape.txt"])
+        monkeypatch.setattr(bootstrap, "OBSOLETE_DIRS", [])
+        monkeypatch.setattr(bootstrap, "OBSOLETE_SETTINGS_HOOKS", [])
+        monkeypatch.setattr(bootstrap, "OBSOLETE_LOCAL_SETTINGS_PATTERNS", [])
+
+        manifest = {"files": {"../escape.txt": "sha256:abc"}}
+
+        try:
+            report = cleanup_obsolete(project_dir, manifest, dry_run=False)
+
+            assert report["removed_files"] == []
+            # External file still exists, content unchanged
+            assert external.exists()
+            assert external.read_text() == "external content — do not touch"
+            # Manifest entry not removed
+            assert "../escape.txt" in manifest["files"]
+            # No backup dir was created
+            assert not (project_dir / ".claude" / ".upgrades").exists()
+            # Warning printed
+            out = capsys.readouterr().out
+            assert "Skipping suspicious path" in out
+        finally:
+            if external.exists():
+                external.unlink()
+
+    def test_rejects_absolute_path_outside_project(self, tmp_path, monkeypatch, capsys):
+        """OBSOLETE_FILES entry with absolute path outside project_dir → skipped."""
+        project_dir = tmp_path / "proj"
+        project_dir.mkdir()
+        outside = tmp_path / "outside.txt"
+        outside.write_text("outside content")
+
+        monkeypatch.setattr(bootstrap, "OBSOLETE_FILES", [str(outside)])
+        monkeypatch.setattr(bootstrap, "OBSOLETE_DIRS", [])
+        monkeypatch.setattr(bootstrap, "OBSOLETE_SETTINGS_HOOKS", [])
+        monkeypatch.setattr(bootstrap, "OBSOLETE_LOCAL_SETTINGS_PATTERNS", [])
+
+        manifest = {"files": {str(outside): "sha256:abc"}}
+
+        try:
+            report = cleanup_obsolete(project_dir, manifest, dry_run=False)
+
+            assert report["removed_files"] == []
+            assert outside.exists()
+            assert outside.read_text() == "outside content"
+            assert str(outside) in manifest["files"]
+            assert not (project_dir / ".claude" / ".upgrades").exists()
+            out = capsys.readouterr().out
+            assert "Skipping suspicious path" in out
+        finally:
+            if outside.exists():
+                outside.unlink()
+
+    def test_rejects_traversal_for_dirs(self, tmp_path, monkeypatch, capsys):
+        """OBSOLETE_DIRS entry with ../ → skipped, external dir untouched, no backup."""
+        project_dir = tmp_path / "proj"
+        project_dir.mkdir()
+        external_dir = tmp_path / "escape_dir"
+        external_dir.mkdir()
+        (external_dir / "nested.txt").write_text("nested")
+
+        monkeypatch.setattr(bootstrap, "OBSOLETE_FILES", [])
+        monkeypatch.setattr(bootstrap, "OBSOLETE_DIRS", ["../escape_dir"])
+        monkeypatch.setattr(bootstrap, "OBSOLETE_SETTINGS_HOOKS", [])
+        monkeypatch.setattr(bootstrap, "OBSOLETE_LOCAL_SETTINGS_PATTERNS", [])
+
+        manifest = {"files": {}}
+
+        try:
+            report = cleanup_obsolete(project_dir, manifest, dry_run=False)
+
+            assert report["removed_dirs"] == []
+            # External dir + its contents untouched
+            assert external_dir.exists()
+            assert (external_dir / "nested.txt").exists()
+            assert (external_dir / "nested.txt").read_text() == "nested"
+            # No backup dir was created
+            assert not (project_dir / ".claude" / ".upgrades").exists()
+            out = capsys.readouterr().out
+            assert "Skipping suspicious path" in out
+        finally:
+            if external_dir.exists():
+                import shutil as _sh
+                _sh.rmtree(external_dir)
+
+
+# ============================================================================
+# main() flags: --upgrade, --all
+# ============================================================================
+
+class TestUpgradeFlag:
+    def test_upgrade_flag_calls_cleanup(self, tmp_path, monkeypatch):
+        """main() with --upgrade invokes cleanup_obsolete when manifest exists."""
+        # Seed manifest so upgrade path runs
+        save_manifest(tmp_path, {"version": "3.0.0", "installed_at": "t", "files": {}})
+
+        calls = []
+
+        def fake_cleanup(project_dir, manifest, dry_run):
+            calls.append({"project_dir": project_dir, "dry_run": dry_run})
+            return {
+                "removed_files": [], "removed_dirs": [],
+                "stripped_settings_hooks": [], "stripped_local_patterns": [],
+                "backups": [None],
+            }
+
+        # Stub out heavy steps so test stays fast & offline
+        monkeypatch.setattr(bootstrap, "cleanup_obsolete", fake_cleanup)
+        monkeypatch.setattr(bootstrap, "install_beads", lambda pd: True)
+        monkeypatch.setattr(bootstrap, "copy_agents", lambda *a, **kw: [])
+        monkeypatch.setattr(bootstrap, "copy_hooks", lambda *a, **kw: None)
+        monkeypatch.setattr(bootstrap, "copy_rules_and_skills", lambda *a, **kw: [])
+        monkeypatch.setattr(bootstrap, "copy_settings_and_claude_md", lambda *a, **kw: None)
+        monkeypatch.setattr(bootstrap, "setup_gitignore", lambda *a, **kw: None)
+        monkeypatch.setattr(bootstrap, "run_bd_doctor", lambda *a, **kw: None)
+
+        monkeypatch.setattr(sys, "argv", ["bootstrap.py", "--project-dir", str(tmp_path), "--upgrade"])
+        with pytest.raises(SystemExit) as exc:
+            bootstrap.main()
+        assert exc.value.code == 0
+        assert len(calls) == 1
+        assert calls[0]["dry_run"] is False
+
+    def test_upgrade_without_manifest_behaves_like_init(self, tmp_path, monkeypatch):
+        """--upgrade on a fresh project (no manifest) skips cleanup_obsolete."""
+        calls = []
+
+        def fake_cleanup(*args, **kw):
+            calls.append(args)
+            return {
+                "removed_files": [], "removed_dirs": [],
+                "stripped_settings_hooks": [], "stripped_local_patterns": [],
+                "backups": [None],
+            }
+
+        monkeypatch.setattr(bootstrap, "cleanup_obsolete", fake_cleanup)
+        monkeypatch.setattr(bootstrap, "install_beads", lambda pd: True)
+        monkeypatch.setattr(bootstrap, "copy_agents", lambda *a, **kw: [])
+        monkeypatch.setattr(bootstrap, "copy_hooks", lambda *a, **kw: None)
+        monkeypatch.setattr(bootstrap, "copy_rules_and_skills", lambda *a, **kw: [])
+        monkeypatch.setattr(bootstrap, "copy_settings_and_claude_md", lambda *a, **kw: None)
+        monkeypatch.setattr(bootstrap, "setup_gitignore", lambda *a, **kw: None)
+        monkeypatch.setattr(bootstrap, "run_bd_doctor", lambda *a, **kw: None)
+
+        monkeypatch.setattr(sys, "argv", ["bootstrap.py", "--project-dir", str(tmp_path), "--upgrade"])
+        with pytest.raises(SystemExit) as exc:
+            bootstrap.main()
+        assert exc.value.code == 0
+        assert calls == []
+
+
+class TestAllFlag:
+    def test_iterates_subdirs_with_beads(self, tmp_path, monkeypatch):
+        """--all <parent> processes direct subdirs containing .beads/, skips others."""
+        parent = tmp_path / "workspace"
+        parent.mkdir()
+        good1 = parent / "proj_a"
+        good1.mkdir()
+        (good1 / ".beads").mkdir()
+        good2 = parent / "proj_b"
+        good2.mkdir()
+        (good2 / ".beads").mkdir()
+        bad = parent / "proj_c"
+        bad.mkdir()  # no .beads/
+        # file (not a directory) — must not break iteration
+        (parent / "stray.txt").write_text("")
+
+        processed: list = []
+
+        def fake_bootstrap_project(**kwargs):
+            processed.append(kwargs["project_dir"])
+            return 0
+
+        monkeypatch.setattr(bootstrap, "bootstrap_project", fake_bootstrap_project)
+
+        monkeypatch.setattr(sys, "argv", ["bootstrap.py", "--all", str(parent)])
+        with pytest.raises(SystemExit) as exc:
+            bootstrap.main()
+        assert exc.value.code == 0
+        names = sorted(p.name for p in processed)
+        assert names == ["proj_a", "proj_b"]
+
+    def test_missing_parent_dir_fails_cleanly(self, tmp_path, monkeypatch):
+        """--all with a non-existent parent returns exit 1."""
+        missing = tmp_path / "does_not_exist"
+        monkeypatch.setattr(sys, "argv", ["bootstrap.py", "--all", str(missing)])
+        with pytest.raises(SystemExit) as exc:
+            bootstrap.main()
+        assert exc.value.code == 1
+
+
+class TestBdDoctorSoftFailure:
+    def test_missing_bd_is_soft_failure(self, tmp_path, monkeypatch, capsys):
+        """bd not on PATH → prints warning, does not raise."""
+        monkeypatch.setattr(bootstrap.shutil, "which", lambda name: None)
+        # Must not raise
+        run_bd_doctor(tmp_path)
+        out = capsys.readouterr().out
+        assert "bd doctor unavailable" in out
+
+    def test_nonzero_exit_is_soft_failure(self, tmp_path, monkeypatch, capsys):
+        """bd doctor returning non-zero → prints warning, does not raise."""
+        monkeypatch.setattr(bootstrap.shutil, "which", lambda name: "/usr/bin/bd")
+
+        class FakeResult:
+            returncode = 2
+            stdout = ""
+            stderr = "no dolt server\n"
+
+        monkeypatch.setattr(
+            bootstrap.subprocess, "run",
+            lambda *a, **kw: FakeResult(),
+        )
+        run_bd_doctor(tmp_path)
+        out = capsys.readouterr().out
+        assert "bd doctor unavailable" in out
+
+    def test_timeout_is_soft_failure(self, tmp_path, monkeypatch, capsys):
+        """bd doctor timeout → prints warning, does not raise."""
+        monkeypatch.setattr(bootstrap.shutil, "which", lambda name: "/usr/bin/bd")
+
+        def fake_run(*a, **kw):
+            raise bootstrap.subprocess.TimeoutExpired(cmd="bd", timeout=15)
+
+        monkeypatch.setattr(bootstrap.subprocess, "run", fake_run)
+        run_bd_doctor(tmp_path)
+        out = capsys.readouterr().out
+        assert "bd doctor unavailable" in out
+
+    def test_success_prints_first_lines(self, tmp_path, monkeypatch, capsys):
+        """Successful bd doctor → first 20 lines of stdout printed under header."""
+        monkeypatch.setattr(bootstrap.shutil, "which", lambda name: "/usr/bin/bd")
+
+        class FakeResult:
+            returncode = 0
+            stdout = "\n".join(f"line {i}" for i in range(30))
+            stderr = ""
+
+        monkeypatch.setattr(
+            bootstrap.subprocess, "run",
+            lambda *a, **kw: FakeResult(),
+        )
+        run_bd_doctor(tmp_path)
+        out = capsys.readouterr().out
+        assert "bd doctor:" in out
+        assert "line 0" in out
+        assert "line 19" in out
+        assert "line 20" not in out  # Truncated at 20

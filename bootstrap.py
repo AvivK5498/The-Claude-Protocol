@@ -37,6 +37,30 @@ TEMPLATES_DIR = SCRIPT_DIR / "templates"
 
 
 # ============================================================================
+# OBSOLETE ITEMS (filled by bd-3 per release; empty here)
+# ============================================================================
+
+# File paths relative to project_dir. Removed by cleanup_obsolete() ONLY IF
+# the path is a key in manifest["files"] (i.e. we installed it — never touch
+# user-created files). Backed up before deletion.
+OBSOLETE_FILES: list[str] = []
+
+# Directory paths relative to project_dir. Removed entirely if they exist
+# (no manifest check — directories aren't tracked individually). Always
+# backed up before deletion.
+OBSOLETE_DIRS: list[str] = []
+
+# Substrings matched against hook command strings in .claude/settings.json.
+# Any hook entry whose "hooks[0].command" contains one of these substrings
+# is stripped. Original settings.json is backed up before writing.
+OBSOLETE_SETTINGS_HOOKS: list[str] = []
+
+# Substrings matched against hook command strings in
+# .claude/settings.local.json. Same semantics as OBSOLETE_SETTINGS_HOOKS.
+OBSOLETE_LOCAL_SETTINGS_PATTERNS: list[str] = []
+
+
+# ============================================================================
 # PROJECT NAME INFERENCE
 # ============================================================================
 
@@ -178,6 +202,244 @@ def save_upgrade(project_dir: Path, relative_path: str, content: str) -> None:
     dest = project_dir / ".claude" / ".upgrades" / relative_path
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(content, encoding="utf-8")
+
+
+# ============================================================================
+# UPGRADE CLEANUP
+# ============================================================================
+
+def _upgrade_timestamp() -> str:
+    """YYYYMMDDTHHMMSSZ — one folder per cleanup_obsolete call."""
+    return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+
+def _hook_command_matches(hook_entry: dict, patterns: list) -> tuple:
+    """Return (command_str, matched) for a hook entry dict.
+
+    Tolerant of malformed entries — returns ("", False) on any structural error.
+    """
+    try:
+        cmd = hook_entry.get("hooks", [{}])[0].get("command", "") or ""
+    except Exception:
+        return "", False
+    return cmd, any(p in cmd for p in patterns)
+
+
+def _load_hooks_section(settings_path: Path) -> tuple:
+    """Load (data, hooks_dict) from settings file. Returns (None, None) on any failure."""
+    if not settings_path.exists():
+        return None, None
+    try:
+        data = json.loads(settings_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None, None
+    hooks = data.get("hooks")
+    if not isinstance(hooks, dict):
+        return None, None
+    return data, hooks
+
+
+def _partition_entries(entries: list, patterns: list) -> tuple:
+    """Split hook entries into (kept_entries, stripped_commands) for one event."""
+    kept, stripped = [], []
+    for entry in entries:
+        cmd, matched = _hook_command_matches(entry, patterns)
+        if matched:
+            stripped.append(cmd)
+        else:
+            kept.append(entry)
+    return kept, stripped
+
+
+def _strip_obsolete_hooks(
+    settings_path: Path, patterns: list, backup_dir: Path, dry_run: bool
+) -> list:
+    """Strip hook entries whose command contains any of `patterns`. Returns stripped cmds."""
+    if not patterns:
+        return []
+    data, hooks = _load_hooks_section(settings_path)
+    if data is None:
+        return []
+    all_stripped: list = []
+    for event, entries in list(hooks.items()):
+        if not isinstance(entries, list):
+            continue
+        kept, stripped = _partition_entries(entries, patterns)
+        hooks[event] = kept
+        all_stripped.extend(stripped)
+    if all_stripped and not dry_run:
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(settings_path, backup_dir / settings_path.name)
+        settings_path.write_text(
+            json.dumps(data, indent=2) + "\n", encoding="utf-8"
+        )
+    return all_stripped
+
+
+def _iter_hook_commands(settings_path: Path):
+    """Yield every hook command string in a settings.json file (tolerant)."""
+    if not settings_path.exists():
+        return
+    try:
+        data = json.loads(settings_path.read_text(encoding="utf-8"))
+    except Exception:
+        return
+    for entries in (data.get("hooks") or {}).values():
+        if not isinstance(entries, list):
+            continue
+        for entry in entries:
+            try:
+                cmd = entry.get("hooks", [{}])[0].get("command", "") or ""
+            except Exception:
+                cmd = ""
+            if cmd:
+                yield cmd
+
+
+def _is_within(child: Path, root: Path) -> bool:
+    """Return True if `child` resolves to `root` or any descendant of `root`."""
+    try:
+        c = child.resolve()
+        r = root.resolve()
+    except Exception:
+        return False
+    return c == r or r in c.parents
+
+
+def _cleanup_file(rel: str, project_dir: Path, manifest: dict,
+                  backup_fn, dry_run: bool) -> bool:
+    """Remove one obsolete file (manifest-gated). Returns True if it was listed."""
+    if rel not in manifest.get("files", {}):
+        return False
+    target = project_dir / rel
+    if not _is_within(target, project_dir):
+        print(f"[UPGRADE] Skipping suspicious path: {rel} (escapes project_dir)")
+        return False
+    if not target.exists():
+        manifest["files"].pop(rel, None)
+        return False
+    if dry_run:
+        return True
+    backup_path = backup_fn() / rel
+    backup_path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(target, backup_path)
+    target.unlink()
+    manifest["files"].pop(rel, None)
+    return True
+
+
+def _cleanup_dir(rel: str, project_dir: Path, manifest: dict,
+                 backup_fn, dry_run: bool) -> bool:
+    """Remove one obsolete directory. Returns True if it was listed."""
+    target = project_dir / rel
+    if not _is_within(target, project_dir):
+        print(f"[UPGRADE] Skipping suspicious path: {rel} (escapes project_dir)")
+        return False
+    if not target.exists() or not target.is_dir():
+        return False
+    if dry_run:
+        return True
+    backup_path = backup_fn() / rel
+    backup_path.parent.mkdir(parents=True, exist_ok=True)
+    if backup_path.exists():
+        shutil.rmtree(backup_path)
+    shutil.copytree(target, backup_path)
+    shutil.rmtree(target)
+    prefix = rel.rstrip("/") + "/"
+    for key in list(manifest.get("files", {}).keys()):
+        if key.startswith(prefix):
+            manifest["files"].pop(key, None)
+    return True
+
+
+def _cleanup_settings(settings_path: Path, patterns: list,
+                      backup_fn, dry_run: bool) -> list:
+    """Strip obsolete hooks from one settings file, return list of stripped commands."""
+    if not patterns:
+        return []
+    if dry_run:
+        return [c for c in _iter_hook_commands(settings_path)
+                if any(p in c for p in patterns)]
+    stripped = _strip_obsolete_hooks(
+        settings_path, patterns, backup_fn(), dry_run
+    )
+    return stripped
+
+
+def cleanup_obsolete(project_dir: Path, manifest: dict, dry_run: bool) -> dict:
+    """Remove obsolete files/dirs and strip obsolete settings hook entries.
+
+    Safety rules:
+    - File is removed only if its relative path is a manifest["files"] key.
+    - Directories are removed unconditionally if they exist.
+    - Every removal is backed up into .claude/.upgrades/<timestamp>/obsolete/<rel>.
+    - Settings files are backed up before editing.
+    - dry_run=True → compute report, touch nothing on disk.
+    - manifest is mutated in place; caller is responsible for save_manifest.
+    """
+    report = {
+        "removed_files": [], "removed_dirs": [],
+        "stripped_settings_hooks": [], "stripped_local_patterns": [],
+        "backups": [None],
+    }
+
+    upgrades_root = project_dir / ".claude" / ".upgrades" / _upgrade_timestamp()
+    obsolete_backup = upgrades_root / "obsolete"
+    state = {"created": False}
+
+    def backup_fn() -> Path:
+        if not state["created"] and not dry_run:
+            obsolete_backup.mkdir(parents=True, exist_ok=True)
+            state["created"] = True
+            report["backups"][0] = str(upgrades_root)
+        return obsolete_backup
+
+    for rel in OBSOLETE_FILES:
+        if _cleanup_file(rel, project_dir, manifest, backup_fn, dry_run):
+            report["removed_files"].append(rel)
+
+    for rel in OBSOLETE_DIRS:
+        if _cleanup_dir(rel, project_dir, manifest, backup_fn, dry_run):
+            report["removed_dirs"].append(rel)
+
+    report["stripped_settings_hooks"] = _cleanup_settings(
+        project_dir / ".claude" / "settings.json",
+        OBSOLETE_SETTINGS_HOOKS, backup_fn, dry_run,
+    )
+    report["stripped_local_patterns"] = _cleanup_settings(
+        project_dir / ".claude" / "settings.local.json",
+        OBSOLETE_LOCAL_SETTINGS_PATTERNS, backup_fn, dry_run,
+    )
+    return report
+
+
+def run_bd_doctor(project_dir: Path) -> None:
+    """Run `bd doctor` and print first 20 lines. Soft-fail on any error."""
+    if not shutil.which("bd"):
+        print("  bd doctor unavailable: bd not found in PATH")
+        return
+    try:
+        result = subprocess.run(
+            ["bd", "doctor"], cwd=project_dir,
+            capture_output=True, text=True, shell=_SHELL,
+            stdin=subprocess.DEVNULL, timeout=15,
+        )
+    except subprocess.TimeoutExpired:
+        print("  bd doctor unavailable: timed out after 15s")
+        return
+    except Exception as e:
+        print(f"  bd doctor unavailable: {e}")
+        return
+
+    if result.returncode != 0:
+        reason = (result.stderr or result.stdout or "non-zero exit").strip().splitlines()
+        reason_first = reason[0] if reason else f"exit {result.returncode}"
+        print(f"  bd doctor unavailable: {reason_first}")
+        return
+
+    print("  bd doctor:")
+    for line in (result.stdout or "").splitlines()[:20]:
+        print(f"    {line}")
 
 
 # ============================================================================
@@ -438,43 +700,69 @@ def setup_gitignore(project_dir: Path) -> None:
 # MAIN
 # ============================================================================
 
-def main():
-    import argparse
+def _print_cleanup_report(report: dict, dry_run: bool) -> None:
+    """Print a [UPGRADE] Cleanup: block from cleanup_obsolete report."""
+    prefix = "[DRY-RUN] " if dry_run else ""
+    print("\n[UPGRADE] Cleanup:")
+    if report["removed_files"]:
+        for rel in report["removed_files"]:
+            print(f"  {prefix}removed file: {rel}")
+    if report["removed_dirs"]:
+        for rel in report["removed_dirs"]:
+            print(f"  {prefix}removed dir:  {rel}")
+    if report["stripped_settings_hooks"]:
+        for cmd in report["stripped_settings_hooks"]:
+            print(f"  {prefix}stripped settings hook: {cmd}")
+    if report["stripped_local_patterns"]:
+        for cmd in report["stripped_local_patterns"]:
+            print(f"  {prefix}stripped local hook:    {cmd}")
+    backup = report["backups"][0]
+    if backup:
+        print(f"  backup: {backup}")
+    if not any([
+        report["removed_files"], report["removed_dirs"],
+        report["stripped_settings_hooks"], report["stripped_local_patterns"],
+    ]):
+        print("  nothing to clean")
 
-    parser = argparse.ArgumentParser(description="Bootstrap beads orchestration")
-    parser.add_argument("--project-name", default=None, help="Project name (auto-inferred if not provided)")
-    parser.add_argument("--project-dir", default=".", help="Project directory")
-    parser.add_argument("--with-rules", action="store_true", help="Also copy dev rules (implementation-standard, logging, tdd)")
-    parser.add_argument("--lang", default="en", choices=["en", "ru"], help="Language for dev rules (default: en)")
-    parser.add_argument("--force", action="store_true", help="Overwrite all files regardless of user modifications")
-    args = parser.parse_args()
 
-    project_dir = Path(args.project_dir).resolve()
+def bootstrap_project(
+    project_dir: Path, project_name: str | None, with_rules: bool,
+    lang: str, force: bool, upgrade: bool, dry_run: bool,
+) -> int:
+    """Run bootstrap for a single project. Returns exit code (0 = success)."""
     project_dir.mkdir(parents=True, exist_ok=True)
+    resolved_name = project_name or infer_project_name(project_dir)
 
-    project_name = args.project_name or infer_project_name(project_dir)
-    print(f"\nBootstrapping beads orchestration for: {project_name}")
+    print(f"\nBootstrapping beads orchestration for: {resolved_name}")
     print(f"Directory: {project_dir}")
-    if args.force:
+    if force:
         print("Mode: FORCE (overwriting all files)")
+    if upgrade:
+        print("Mode: UPGRADE" + (" (dry-run)" if dry_run else ""))
     print("=" * 60)
 
     if not TEMPLATES_DIR.exists():
         print(f"\nERROR: Templates not found: {TEMPLATES_DIR}")
-        sys.exit(1)
+        return 1
+
+    manifest_path = project_dir / ".claude" / ".manifest.json"
+    had_manifest = manifest_path.exists()
+    if upgrade and not had_manifest:
+        print("\n[UPGRADE] No existing manifest — running as plain init.\n")
 
     manifest = load_manifest(project_dir)
     all_skipped = []
 
     if not install_beads(project_dir):
-        sys.exit(1)
+        return 1
 
-    all_skipped += copy_agents(project_dir, project_name, manifest, args.force)
+    all_skipped += copy_agents(project_dir, resolved_name, manifest, force)
     copy_hooks(project_dir, manifest)
     all_skipped += copy_rules_and_skills(
-        project_dir, args.with_rules, args.lang, manifest, args.force,
+        project_dir, with_rules, lang, manifest, force,
     )
-    copy_settings_and_claude_md(project_dir, project_name)
+    copy_settings_and_claude_md(project_dir, resolved_name)
     setup_gitignore(project_dir)
 
     # Read version from package.json (same package as bootstrap.py)
@@ -486,9 +774,15 @@ def main():
         except Exception:
             pass
 
+    # Run upgrade cleanup AFTER init steps so manifest reflects our files
+    if upgrade and had_manifest:
+        report = cleanup_obsolete(project_dir, manifest, dry_run)
+        _print_cleanup_report(report, dry_run)
+
     manifest["version"] = pkg_version
     manifest["installed_at"] = datetime.now(timezone.utc).isoformat()
-    save_manifest(project_dir, manifest)
+    if not dry_run:
+        save_manifest(project_dir, manifest)
 
     print("\n" + "=" * 60)
     print("BOOTSTRAP COMPLETE")
@@ -500,6 +794,11 @@ def main():
             print(f"    - {rel}")
             print(f"      Review: diff .claude/{rel} .claude/.upgrades/{rel}")
 
+    # Post-upgrade health check — never fatal
+    if upgrade and had_manifest and not dry_run:
+        print("")
+        run_bd_doctor(project_dir)
+
     print(f"""
 Next steps:
 
@@ -508,6 +807,74 @@ Next steps:
 3. Create your first bead: bd create "Task" -d "Description"
 4. Dispatch work: Task(subagent_type="general-purpose", prompt="BEAD_ID: ...")
 """)
+    return 0
+
+
+def run_batch_upgrade(
+    parent_dir: Path, with_rules: bool, lang: str, force: bool, dry_run: bool,
+) -> int:
+    """Iterate direct subdirs of parent_dir that contain .beads/ and upgrade each."""
+    if not parent_dir.exists() or not parent_dir.is_dir():
+        print(f"ERROR: --all parent directory not found: {parent_dir}")
+        return 1
+
+    print(f"\n[BATCH UPGRADE] Scanning {parent_dir}")
+    candidates = sorted(p for p in parent_dir.iterdir() if p.is_dir())
+    upgraded = 0
+    skipped: list = []
+
+    for child in candidates:
+        if not (child / ".beads").is_dir():
+            skipped.append((child.name, "no .beads/"))
+            continue
+        print(f"\n{'#' * 60}\n# {child.name}\n{'#' * 60}")
+        try:
+            rc = bootstrap_project(
+                project_dir=child, project_name=None, with_rules=with_rules,
+                lang=lang, force=force, upgrade=True, dry_run=dry_run,
+            )
+            if rc == 0:
+                upgraded += 1
+            else:
+                skipped.append((child.name, f"exit {rc}"))
+        except Exception as e:
+            skipped.append((child.name, f"exception: {e}"))
+
+    print("\n" + "=" * 60)
+    print(f"BATCH UPGRADE SUMMARY: {upgraded} upgraded, {len(skipped)} skipped")
+    print("=" * 60)
+    for name, reason in skipped:
+        print(f"  - {name}: {reason}")
+    return 0
+
+
+def main():
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Bootstrap beads orchestration")
+    parser.add_argument("--project-name", default=None, help="Project name (auto-inferred if not provided)")
+    parser.add_argument("--project-dir", default=".", help="Project directory")
+    parser.add_argument("--with-rules", action="store_true", help="Also copy dev rules (implementation-standard, logging, tdd)")
+    parser.add_argument("--lang", default="en", choices=["en", "ru"], help="Language for dev rules (default: en)")
+    parser.add_argument("--force", action="store_true", help="Overwrite all files regardless of user modifications")
+    parser.add_argument("--upgrade", action="store_true", help="Run init flow then cleanup obsolete items (uses existing manifest)")
+    parser.add_argument("--dry-run", action="store_true", help="Print plan without writing anything")
+    parser.add_argument("--all", dest="all_parent", default=None, metavar="PARENT_DIR", help="Batch upgrade: iterate direct subdirs of PARENT_DIR that contain .beads/. Implies --upgrade.")
+    args = parser.parse_args()
+
+    if args.all_parent:
+        parent = Path(args.all_parent).resolve()
+        sys.exit(run_batch_upgrade(
+            parent_dir=parent, with_rules=args.with_rules, lang=args.lang,
+            force=args.force, dry_run=args.dry_run,
+        ))
+
+    project_dir = Path(args.project_dir).resolve()
+    sys.exit(bootstrap_project(
+        project_dir=project_dir, project_name=args.project_name,
+        with_rules=args.with_rules, lang=args.lang, force=args.force,
+        upgrade=args.upgrade, dry_run=args.dry_run,
+    ))
 
 
 if __name__ == "__main__":

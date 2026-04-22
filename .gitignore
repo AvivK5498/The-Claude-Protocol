@@ -42,6 +42,8 @@ Thumbs.db
 # Beads orchestration
 .beads/
 .worktrees/
+# bd auto-export can stray to worktree root in rare cases — never commit it
+/issues.jsonl
 
 # Beads / Dolt files (added by bd init)
 .dolt/
