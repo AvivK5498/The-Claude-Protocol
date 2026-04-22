@@ -35,7 +35,7 @@ Rule of thumb: 1 bead = 1 PR = 1 reviewable diff.
 ### Status discipline:
 - Created → `open` (default)
 - Starting work → `bd update {ID} --status in_progress`
-- Submitted for review → `bd update {ID} --status inreview`
+- Submitted for review → `bd comments add {ID} "AWAITING REVIEW"` then leave bead at `in_progress` until user merges
 - Merged/done → `bd close {ID}`
 - **Epic status:** When starting work on the first child → `bd update {EPIC_ID} --status in_progress`. Epic stays `in_progress` until all children are done.
 - **Never leave a bead in `in_progress` across sessions without reason**
@@ -76,13 +76,9 @@ Execute ALL steps in order:
    - If anything is missing — implement it now, don't skip
 2. `git add -A && git commit -m "..."`
 3. `git push origin bd-{BEAD_ID}`
-4. Log what you learned (MUST be specific and actionable, not vague):
-   `bd comments add {BEAD_ID} "LEARNED: [specific problem] → [specific solution]. [context why]"`
-   BAD: "LEARNED: fixed async issue" — useless for future search
-   GOOD: "LEARNED: pg connection pool exhaustion under load → set max=20 and idle_timeout=30s. Default max=10 caused 503s at >50 rps"
-5. Leave completion comment: `bd comments add {BEAD_ID} "Completed: [summary]"`
-6. Mark status: `bd update {BEAD_ID} --status inreview`
-7. Return completion report (checklist is MANDATORY — hook will block without it):
+4. Leave completion comment: `bd comments add {BEAD_ID} "Completed: [summary]"`
+5. Signal review: `bd comments add {BEAD_ID} "AWAITING REVIEW"` — leave the bead at `in_progress`; the user closes it after merging the PR.
+6. Return completion report (checklist is MANDATORY — hook will block without it):
    ```
    BEAD {BEAD_ID} COMPLETE
    Worktree: .worktrees/bd-{BEAD_ID}
@@ -94,25 +90,7 @@ Execute ALL steps in order:
    Summary: [1 sentence]
    ```
 
-## bd command reference (use ONLY these — do NOT invent commands)
-
-| Action | Command |
-|--------|---------|
-| Create | `bd create --title="..." -d "..." [--type task\|bug\|feature\|epic] [--parent ID]` |
-| List | `bd list [--status open\|in_progress\|inreview\|done] [--json]` |
-| Show | `bd show {ID} [--json]` |
-| Update | `bd update {ID} --status in_progress\|inreview [--title\|--description\|--notes]` |
-| Close | `bd close {ID} [--reason "..."]` |
-| Comments | `bd comments {ID}` / `bd comments add {ID} "text"` |
-| Dependencies | `bd dep add {ID} {BLOCKS_ID}` |
-| Ready | `bd ready` (unblocked open beads) |
-| Blocked | `bd blocked` |
-| Search | `bd search "query"` |
-| Status | `bd status` (overview/statistics) |
-| Prime | `bd prime` (AI context recovery) |
-| Worktree | `bd worktree create <path> --branch <name>` / `bd worktree remove <path>` |
-
-All commands support `--json` for structured output. There is NO `export`, `import`, or `stats` command.
+CLI: `bd prime` for overview, `bd <cmd> --help` for details
 
 ## Banned
 

@@ -5,7 +5,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { injectText, execCommand, execCommandJSON, getProjectDir, runHook } = require('./hook-utils.cjs');
+const { injectText, execCommand, getProjectDir, runHook } = require('./hook-utils.cjs');
 
 runHook('session-start', () => {
   const projectDir = getProjectDir();
@@ -18,7 +18,7 @@ runHook('session-start', () => {
 
   // Check if bd is available
   if (!execCommand('bd', ['--version'])) {
-    injectText('beads CLI (bd) not found. Install from: https://github.com/steveyegge/beads\n');
+    injectText('beads CLI (bd) not found. Install from: https://github.com/gastownhall/beads\n');
     process.exit(0);
   }
 
@@ -87,22 +87,6 @@ runHook('session-start', () => {
     }
   }
 
-  // ============================================================
-  // Stale inreview beads — remind to close
-  // ============================================================
-  const allBeads = execCommandJSON('bd', ['list', '--json']);
-  if (Array.isArray(allBeads)) {
-    const inreview = allBeads.filter(b => b.status === 'inreview');
-    if (inreview.length > 0) {
-      output.push('ACTION REQUIRED: Beads in "inreview" — close if merged:');
-      for (const b of inreview.slice(0, 5)) {
-        output.push(`   ${b.id}: ${b.title || '(no title)'} → bd close "${b.id}"`);
-      }
-      if (inreview.length > 5) output.push(`   ... and ${inreview.length - 5} more`);
-      output.push('');
-    }
-  }
-
   output.push('');
   output.push('## Task Status');
   output.push('');
@@ -146,48 +130,6 @@ runHook('session-start', () => {
   // If nothing found
   if (!inProgress && !ready && !blocked && !stale) {
     output.push('No active beads. Create one with: bd create "Task title" -d "Description"');
-  }
-
-  // ============================================================
-  // Knowledge Base - Surface recent learnings
-  // ============================================================
-  const knowledgeFile = path.join(beadsDir, 'memory', 'knowledge.jsonl');
-  try {
-    const stat = fs.statSync(knowledgeFile);
-    if (stat.size > 0) {
-      const allLines = fs.readFileSync(knowledgeFile, 'utf8').split('\n').filter(Boolean);
-      const totalEntries = allLines.length;
-
-      // Parse last 20 entries, deduplicate by key (latest wins), show top 5
-      const recent = allLines.slice(-20)
-        .map(line => { try { return JSON.parse(line); } catch { return null; } })
-        .filter(Boolean);
-
-      const byKey = new Map();
-      for (const e of recent) {
-        const existing = byKey.get(e.key);
-        if (!existing || (e.ts || 0) > (existing.ts || 0)) byKey.set(e.key, e);
-      }
-
-      const top5 = [...byKey.values()]
-        .sort((a, b) => (b.ts || 0) - (a.ts || 0))
-        .slice(0, 5);
-
-      if (top5.length > 0) {
-        output.push('');
-        output.push(`## Recent Knowledge (${totalEntries} entries)`);
-        output.push('');
-        for (const e of top5) {
-          const typeLabel = (e.type || '').toUpperCase().slice(0, 5);
-          const snippet = (e.content || '').slice(0, 100);
-          output.push(`  [${typeLabel}] ${snippet}  (${e.source})`);
-        }
-        output.push('');
-        output.push('  Search: node .beads/memory/recall.cjs "keyword"');
-      }
-    }
-  } catch {
-    // No knowledge file — skip
   }
 
   output.push('');

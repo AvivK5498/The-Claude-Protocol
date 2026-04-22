@@ -68,20 +68,6 @@ bd create "Fix: [desc]" -d "Follow-up to {OLD_ID}: [details]"
 bd dep relate {NEW_ID} {OLD_ID}
 ```
 
-## Knowledge Base
-
-**Before starting any investigation** — search for prior solutions:
-```bash
-node .beads/memory/recall.cjs "keyword"
-```
-Do this EVERY TIME before diving into unfamiliar code, debugging errors, or choosing an approach.
-
-**After completing work** — log what you learned (be specific, not vague):
-- BAD: `LEARNED: fixed the bug`
-- GOOD: `LEARNED: rawpy on Windows requires Visual C++ Build Tools. pip install fails without them. Fix: install build tools or use prebuilt wheel from https://...`
-
-The more specific the LEARNED comment, the more useful it is next time.
-
 ## Agents
 
 - code-reviewer — adversarial review with DEMO verification

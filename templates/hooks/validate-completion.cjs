@@ -8,7 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const {
   readStdinJSON, getField, approve, block,
-  execCommand, execCommandJSON, getRepoRoot, runHook,
+  execCommand, getRepoRoot, runHook,
 } = require('./hook-utils.cjs');
 
 runHook('validate-completion', () => {
@@ -46,7 +46,6 @@ runHook('validate-completion', () => {
   verifyChecklist(lastResponse, beadId);
   verifyComment(agentTranscriptContent);
   verifyWorktree(beadId);
-  verifyBeadStatus(beadId);
   verifyVerbosity(lastResponse);
 
   approve();
@@ -180,16 +179,6 @@ function verifyWorktree(beadId) {
     if (!remoteExists) {
       block('Work verification failed: branch not pushed.\n\nRun: git push -u origin bd-{BEAD_ID}');
     }
-  }
-}
-
-/** Block if bead status is not 'inreview'. */
-function verifyBeadStatus(beadId) {
-  if (!beadId) return;
-  const beadData = execCommandJSON('bd', ['show', beadId, '--json']);
-  const status = beadData && beadData[0] ? (beadData[0].status || 'unknown') : 'unknown';
-  if (status !== 'inreview') {
-    block(`Work verification failed: bead status is '${status}'.\n\nRun: bd update ${beadId} --status inreview`);
   }
 }
 

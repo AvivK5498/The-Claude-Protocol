@@ -453,9 +453,9 @@ def install_beads(project_dir: Path) -> bool:
     if not shutil.which("bd"):
         print("  - beads CLI (bd) not found, installing...")
         for method, cmd in [
-            ("Homebrew", ["brew", "install", "steveyegge/beads/bd"]),
+            ("Homebrew", ["brew", "install", "gastownhall/beads/bd"]),
             ("npm", ["npm", "install", "-g", "@beads/bd"]),
-            ("go", ["go", "install", "github.com/steveyegge/beads/cmd/bd@latest"]),
+            ("go", ["go", "install", "github.com/gastownhall/beads/cmd/bd@latest"]),
         ]:
             if shutil.which(cmd[0]):
                 result = subprocess.run(cmd, capture_output=True, text=True, shell=_SHELL)
@@ -464,7 +464,7 @@ def install_beads(project_dir: Path) -> bool:
                     break
         else:
             print("  ERROR: Could not install beads CLI (bd)")
-            print("  Install manually: https://github.com/steveyegge/beads#-installation")
+            print("  Install manually: https://github.com/gastownhall/beads#-installation")
             return False
     else:
         print("  - beads CLI already installed")
@@ -485,17 +485,6 @@ def install_beads(project_dir: Path) -> bool:
             beads_dir.mkdir(exist_ok=True)
             (beads_dir / "issues.jsonl").touch()
             print("  - Created .beads manually (run 'bd init' later with Dolt server running)")
-
-    # Setup memory/knowledge base
-    memory_dir = beads_dir / "memory"
-    memory_dir.mkdir(parents=True, exist_ok=True)
-    knowledge_file = memory_dir / "knowledge.jsonl"
-    if not knowledge_file.exists():
-        knowledge_file.touch()
-
-    recall_src = TEMPLATES_DIR / "hooks" / "recall.cjs"
-    if recall_src.exists():
-        shutil.copy2(recall_src, memory_dir / "recall.cjs")
 
     print("  DONE")
     return True

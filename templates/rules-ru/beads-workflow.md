@@ -1,123 +1,101 @@
-# Beads Workflow
+# Рабочий процесс Beads
 
-## Beads = single source of truth. Nothing lives only in your head.
+## Beads = единый источник истины. Ничто не должно жить только у тебя в голове.
 
-Context gets compacted. Sessions restart. Beads persist.
+Контекст сжимается. Сессии перезапускаются. Beads остаются.
 
-### When to create a bead — ALWAYS if:
-- User asks to implement, fix, refactor, or change anything
-- You discover a bug, tech debt, or improvement during work
-- A task needs follow-up that won't happen right now
-- You start investigating something non-trivial
+### Когда создавать bead — ВСЕГДА если:
+- Пользователь просит реализовать, починить, отрефакторить или изменить что-либо
+- Ты обнаружил баг, тех-долг или улучшение во время работы
+- Задача требует follow-up, который сейчас не делается
+- Ты начал нетривиальное расследование
 
-### After planning — size check then create beads:
-When a plan is finalized and user confirms, BEFORE implementation:
+### После планирования — size check, затем создание beads:
+Когда план согласован и пользователь подтвердил, ПЕРЕД реализацией:
 
-**Step 1: Size check (one sentence decision):**
-- >3 files OR >1 domain (DB + API, backend + frontend) → epic with children
-- Description has "and then", "after that", multiple steps → multiple beads
-- >50 lines estimated → consider splitting
-- Otherwise → single bead
+**Шаг 1: Проверка размера (решение в одну фразу):**
+- >3 файлов ИЛИ >1 домена (БД + API, backend + frontend) → epic с дочерними
+- В описании есть «а затем», «после этого», несколько шагов → несколько beads
+- >50 строк оценки → рассмотри разбиение
+- Иначе → один bead
 
-Rule of thumb: 1 bead = 1 PR = 1 reviewable diff.
+Правило: 1 bead = 1 PR = 1 диф для ревью.
 
-**Step 2: Create beads:**
-- Single task: `bd create "Task" -d "..."`
-- Epic: `bd create "Feature" -d "..." --type epic`, then children with `--parent` and `--deps`
-- Verify: `bd list` — the plan now lives in beads, not just in context
+**Шаг 2: Создание beads:**
+- Одиночная задача: `bd create "Task" -d "..."`
+- Epic: `bd create "Feature" -d "..." --type epic`, затем дети с `--parent` и `--deps`
+- Проверь: `bd list` — план теперь живёт в beads, а не только в контексте
 
-**Step 3: Only then start work** with `bd ready` → dispatch
+**Шаг 3: Только теперь начинай работу** с `bd ready` → dispatch
 
-### When NOT to create a bead:
-- Quick fix approved by user (<10 lines, feature branch)
-- Pure research/discussion with no code changes planned
+### Когда bead НЕ нужен:
+- Quick fix, одобренный пользователем (<10 строк, feature branch)
+- Чистый research/обсуждение без планируемых изменений кода
 
-### Status discipline:
-- Created → `open` (default)
-- Starting work → `bd update {ID} --status in_progress`
-- Submitted for review → `bd update {ID} --status inreview`
-- Merged/done → `bd close {ID}`
-- **Epic status:** When starting work on the first child → `bd update {EPIC_ID} --status in_progress`. Epic stays `in_progress` until all children are done.
-- **Never leave a bead in `in_progress` across sessions without reason**
+### Дисциплина статусов:
+- Создан → `open` (по умолчанию)
+- Начал работу → `bd update {ID} --status in_progress`
+- Отправлен на ревью → `bd comments add {ID} "AWAITING REVIEW"`, bead остаётся в `in_progress` до мержа пользователем
+- Смержен/готов → `bd close {ID}`
+- **Статус epic:** Когда начинаешь работу над первым ребёнком → `bd update {EPIC_ID} --status in_progress`. Epic остаётся в `in_progress`, пока не завершены все дочерние.
+- **Никогда не оставляй bead в `in_progress` между сессиями без причины**
 
-### Discovered during work:
-When you find tech debt, bugs, or improvements while working on something else:
+### Обнаружено во время работы:
+Когда находишь тех-долг, баги или улучшения во время работы над чем-то другим:
 ```bash
 bd create "Fix: [what]" -d "Discovered while working on {CURRENT_BEAD}: [details]"
 ```
-Don't try to fix it now (unless trivial). Create the bead so it's not forgotten.
+Не чини это сейчас (если не тривиально). Создай bead, чтобы не забыть.
 
-## Task Start
+## Начало задачи
 
-1. Parse BEAD_ID from dispatch prompt
-2. Create worktree:
+1. Распарси BEAD_ID из dispatch-промпта
+2. Создай worktree (ОБЯЗАТЕЛЬНО через bd, не через raw git — см. Banned):
    ```bash
-   REPO_ROOT=$(git rev-parse --show-toplevel)
-   WORKTREE_PATH="$REPO_ROOT/.worktrees/bd-{BEAD_ID}"
-   mkdir -p "$REPO_ROOT/.worktrees"
-   [[ ! -d "$WORKTREE_PATH" ]] && git worktree add "$WORKTREE_PATH" -b bd-{BEAD_ID}
-   cd "$WORKTREE_PATH"
+   bd worktree create .worktrees/bd-{BEAD_ID} --branch bd-{BEAD_ID}
+   cd .worktrees/bd-{BEAD_ID}
    ```
-3. Mark in progress: `bd update {BEAD_ID} --status in_progress`
-4. If this is a child of an epic — check epic status. If epic is still `open`, mark it too: `bd update {EPIC_ID} --status in_progress`
-5. Read bead context: `bd show {BEAD_ID}` and `bd comments {BEAD_ID}`
+   Это создаёт `.beads/redirect`, указывающий на основной `.beads/` — все bd команды используют единый dolt-сервер из главного репо. Raw `git worktree add` создал бы теневую копию `.beads/` со своим dolt-сервером, что ведёт к утечке процессов и потере данных.
+3. Пометь in progress: `bd update {BEAD_ID} --status in_progress`
+4. Если это ребёнок epic — проверь статус epic. Если epic ещё `open`, пометь и его: `bd update {EPIC_ID} --status in_progress`
+5. Прочти контекст bead: `bd show {BEAD_ID}` и `bd comments {BEAD_ID}`
 
-## During Implementation
+## Во время реализации
 
-- Work ONLY in your worktree: `.worktrees/bd-{BEAD_ID}/`
-- Commit frequently with descriptive messages
-- Log progress: `bd comments add {BEAD_ID} "Completed X, working on Y"`
+- Работай ТОЛЬКО в своём worktree: `.worktrees/bd-{BEAD_ID}/`
+- Коммить часто с понятными сообщениями
+- Логируй прогресс: `bd comments add {BEAD_ID} "Completed X, working on Y"`
 
-## Task Completion
+## Завершение задачи
 
-Execute ALL steps in order:
+Выполни ВСЕ шаги по порядку:
 
-1. **Self-verify against requirements:**
-   - Run `bd show {BEAD_ID}` — re-read the description
-   - Check every item/requirement from the description
-   - If anything is missing — implement it now, don't skip
+1. **Самоверификация по требованиям:**
+   - Запусти `bd show {BEAD_ID}` — перечитай описание
+   - Проверь каждый пункт/требование из описания
+   - Если чего-то не хватает — реализуй сейчас, не пропускай
 2. `git add -A && git commit -m "..."`
 3. `git push origin bd-{BEAD_ID}`
-4. Log what you learned (MUST be specific and actionable, not vague):
-   `bd comments add {BEAD_ID} "LEARNED: [specific problem] → [specific solution]. [context why]"`
-   BAD: "LEARNED: fixed async issue" — useless for future search
-   GOOD: "LEARNED: pg connection pool exhaustion under load → set max=20 and idle_timeout=30s. Default max=10 caused 503s at >50 rps"
-5. Leave completion comment: `bd comments add {BEAD_ID} "Completed: [summary]"`
-6. Mark status: `bd update {BEAD_ID} --status inreview`
-7. Return completion report (checklist is MANDATORY — hook will block without it):
+4. Оставь завершающий комментарий: `bd comments add {BEAD_ID} "Completed: [summary]"`
+5. Сигнал к ревью: `bd comments add {BEAD_ID} "AWAITING REVIEW"` — оставь bead в статусе `in_progress`; пользователь закроет его после мержа PR.
+6. Верни отчёт о завершении (checklist ОБЯЗАТЕЛЕН — хук заблокирует без него):
    ```
    BEAD {BEAD_ID} COMPLETE
    Worktree: .worktrees/bd-{BEAD_ID}
    Checklist:
-   - [x] requirement 1 from description
-   - [x] requirement 2 from description
-   Files: [names only]
+   - [x] требование 1 из описания
+   - [x] требование 2 из описания
+   Files: [только имена]
    Tests: pass
-   Summary: [1 sentence]
+   Summary: [1 предложение]
    ```
 
-## bd command reference (use ONLY these — do NOT invent commands)
-
-| Action | Command |
-|--------|---------|
-| Create | `bd create --title="..." -d "..." [--type task\|bug\|feature\|epic] [--parent ID]` |
-| List | `bd list [--status open\|in_progress\|inreview\|done] [--json]` |
-| Show | `bd show {ID} [--json]` |
-| Update | `bd update {ID} --status in_progress\|inreview [--title\|--description\|--notes]` |
-| Close | `bd close {ID} [--reason "..."]` |
-| Comments | `bd comments {ID}` / `bd comments add {ID} "text"` |
-| Dependencies | `bd dep add {ID} {BLOCKS_ID}` |
-| Ready | `bd ready` (unblocked open beads) |
-| Blocked | `bd blocked` |
-| Search | `bd search "query"` |
-| Status | `bd status` (overview/statistics) |
-| Prime | `bd prime` (AI context recovery) |
-
-All commands support `--json` for structured output. There is NO `export`, `import`, or `stats` command.
+CLI: `bd prime` для общего обзора, `bd <cmd> --help` для деталей
 
 ## Banned
 
-- Working directly on main branch
-- Implementing without BEAD_ID
-- Merging your own branch (user merges via PR)
-- Editing files outside your worktree
+- Работа напрямую в ветке main
+- Реализация без BEAD_ID
+- Мерж своей ветки (пользователь мержит через PR)
+- Редактирование файлов вне своего worktree
+- Raw `git worktree add` / `git worktree remove` — ОБЯЗАТЕЛЬНО использовать `bd worktree create` / `bd worktree remove`. Raw git worktree создаёт теневые копии `.beads/`, плодит orphan процессы dolt-server, блокирует удаление файлов и теряет данные beads. См.: документация по механизму `.beads/redirect`.

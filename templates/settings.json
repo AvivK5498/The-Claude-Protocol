@@ -20,14 +20,6 @@
         ]
       }
     ],
-    "PostToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {"type": "command", "command": "node .claude/hooks/memory-capture.cjs", "timeout": 10}
-        ]
-      }
-    ],
     "SubagentStop": [
       {
         "hooks": [
