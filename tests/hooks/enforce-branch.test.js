@@ -4,16 +4,23 @@ import path from 'path';
 
 const HOOK_PATH = path.resolve(__dirname, '../../templates/hooks/enforce-branch-before-edit.cjs');
 
-/**
- * Run the hook as subprocess. We can't easily mock getCurrentBranch() in a
- * subprocess, so these tests focus on the always-allowed paths and the input
- * parsing logic. Branch-dependent tests are included but may need a git repo.
- */
+// The hook bails out early when process.cwd() contains '.worktrees' (see
+// enforce-branch-before-edit.cjs). If vitest runs from inside a bd worktree,
+// that bypass fires and the hook exits with no stdout, breaking the branch-
+// protection tests. Pin the subprocess cwd to the main repo root so the tests
+// exercise realistic non-worktree behavior regardless of where vitest starts.
+const MAIN_REPO_ROOT = path.dirname(
+  execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], {
+    encoding: 'utf8',
+  }).trim()
+);
+
 function runHook(stdinData) {
   const input = JSON.stringify(stdinData);
   try {
     const stdout = execFileSync('node', [HOOK_PATH], {
       input,
+      cwd: MAIN_REPO_ROOT,
       encoding: 'utf8',
       timeout: 5000,
       stdio: ['pipe', 'pipe', 'pipe'],
